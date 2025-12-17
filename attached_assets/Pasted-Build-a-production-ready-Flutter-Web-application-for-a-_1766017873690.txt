@@ -1,0 +1,364 @@
+Build a production‑ready Flutter Web application for a multi‑language mobile car wash service called “Ghasla Style” in Kuwait, with a full loyalty and referral system, advanced admin dashboard, and strong security.
+The app must be designed so that the same Flutter project can later be used to build Android and iOS apps. Focus on clean architecture, modular code, and no security shortcuts.
+
+1. Tech stack and global requirements
+Frontend: Flutter Web (null‑safety, sound null safety, responsive for mobile/tablet/desktop).
+
+Backend: Firebase Authentication + Cloud Firestore + (optional) Cloud Functions for sensitive logic.
+
+Use Firestore Security Rules to strictly enforce all permissions and prevent any critical checks from being client‑only.
+
+Structure the project with clean architecture:
+
+lib/models/ for data models.
+
+lib/services/ for Firebase interaction and business logic.
+
+lib/repositories/ for data access abstraction.
+
+lib/ui/ for pages, widgets, and themes (light/dark).
+
+lib/core/ for constants, routing, helpers, and localization configuration.
+
+No secrets in the client code (no private API keys or admin flags on the client). Use Firebase config placeholders only.
+
+2. Branding, theming, and languages
+Brand name: Ghasla Style (غسلة ستايل).
+
+Primary colors: dark orange and blue, with neutral grays and whites. Define them as constants in a theme file and support:
+
+Light theme and Dark theme, with a toggle in the UI.
+
+Languages:
+
+Default: Arabic (RTL).
+
+Additional: English and French.
+
+Implement a language toggle (AR / EN / FR) visible in the header and also accessible in the footer.
+
+All static texts and labels must be prepared for localization using a clean i18n setup (e.g., intl / flutter_localizations or a simple JSON/ARB‑based solution).
+
+3. Authentication and roles
+Use Firebase Authentication to support:
+
+For customers:
+
+Sign up / login with email and password.
+
+Login with Google.
+
+Login with phone number (SMS OTP).
+
+For admins and super_admin:
+
+Login with email and password only.
+
+Implement Two‑Factor Authentication (2FA) from the beginning for admin/super_admin:
+
+Option 1 (preferred): use Firebase multi‑factor with SMS or email OTP.
+
+Option 2: emulate 2FA by requiring an extra one‑time code delivered by email or SMS using Cloud Functions.
+
+2FA must be required for all admin and super_admin accounts before they can access the admin dashboard.
+
+Roles:
+
+customer
+
+admin
+
+super_admin
+
+Enforce RBAC (Role‑Based Access Control) both in the Flutter UI and in Firestore Security Rules. Never rely on client‑side checks only.
+
+4. Main app structure and pages (customer side)
+Build a responsive public website (Flutter Web) with these main pages:
+
+Home page
+
+Hero section explaining Ghasla Style as a mobile car wash service in Kuwait.
+
+Call‑to‑action buttons: “Book Now”, “Login / Register”.
+
+Highlights of benefits, loyalty program, and “Friends Club” (referral program).
+
+Support for Arabic / English / French content based on selected language.
+
+About Us
+
+Brief story and mission of Ghasla Style.
+
+Why mobile car wash, coverage areas in Kuwait, quality and safety.
+
+Services & Packages
+
+Show all car wash packages with final prices (use generic example prices from the last proposal, but keep them as configurable fields):
+
+Exterior Wash – Sedan & SUV prices.
+
+Interior Wash – Sedan & SUV prices.
+
+Full Wash – Sedan & SUV prices.
+
+VIP / Detailing – Sedan & SUV prices.
+
+Monthly Subscription Packages (e.g., X washes per month).
+
+For each package, show: name, description, price for sedan, price for SUV, estimated time.
+
+These prices must be fully configurable from the admin dashboard and stored in Firestore (no hard‑coded prices).
+
+Online Booking page
+
+Multi‑step booking form:
+
+Step 1: Car type (Sedan / SUV / other), car details.
+
+Step 2: Service / Package selection.
+
+Step 3: Location (address, area, optional map placeholder), preferred date and time.
+
+Step 4: Payment method (cash now, online later placeholder).
+
+When the user confirms, create an order in Firestore with fields like:
+
+status (pending, assigned, in_progress, completed, cancelled).
+
+customer_id, created_at, updated_at.
+
+service_id, car_type, price, currency.
+
+payment_method (cash, online).
+
+loyalty_points_earned, loyalty_points_redeemed.
+
+referral_id if applicable (who referred this customer).
+
+Show a confirmation screen and allow the customer to view and track their orders in their account.
+
+Customer account area
+
+View and edit profile (name, phone, email, car info).
+
+View current and past orders with real‑time status updates.
+
+Wallet & loyalty points page:
+
+Show current loyalty points balance.
+
+Show points earned per order.
+
+Show redemptions history.
+
+Friends Club (Referral program) page:
+
+Show a unique referral link for each customer.
+
+Explain how the referral works (earn points for successful referrals, and give the new friend a welcome points bonus).
+
+Show stats: number of successful referrals, points earned from referrals.
+
+Loyalty & Friends Club info page (public)
+
+Public explanation of the loyalty points logic and “Friends Club” referral system in all three languages.
+
+Show example:
+
+1 KD spent = 35 loyalty points.
+
+Each 100 points can be redeemed as 0.4 KD discount (or similar, based on the latest proposal).
+
+Maximum redemption per order is around 10–15% of the order value (configurable in admin).
+
+Explain that both direct purchases and referrals give points, and that the system is designed to protect profit margin.
+
+Blog page, Customer Reviews, Before/After Gallery
+
+Implement placeholders and simple Firestore‑driven collections to store blog posts, testimonials, and before/after images.
+
+Admin must be able to add/edit/delete content from the admin dashboard.
+
+Contact & WhatsApp
+
+Show the client’s WhatsApp number: +965 9606 8518.
+
+Add a floating WhatsApp button fixed in the bottom‑right corner on all pages linking to the WA chat URL.
+
+Simple contact form (name, phone, message) stored in Firestore.
+
+5. Loyalty program (points) and welcome offers
+Implement a full loyalty points system based on the last agreed proposal:
+
+Points earning:
+
+Define a constant like: points_per_kd = 35.
+
+For each completed order, calculate earned_points = order_total_kd * points_per_kd.
+
+Store in Firestore in a loyalty_transactions collection with fields:
+
+customer_id, order_id, points_change, type (earn, redeem, referral_bonus, welcome_bonus), created_at.
+
+Redemption rules:
+
+Define a conversion rate: for example, 100 points = 0.4 KD discount (configurable in admin).
+
+Define a maximum percentage of the order total that can be redeemed per order (e.g., 10–15%). Make it configurable.
+
+Welcome offer:
+
+New customer welcome bonus (e.g., 200 points on first successful paid order).
+
+Optionally, “first order discount” (simple percentage discount) configurable from admin.
+
+All core loyalty parameters (points per KD, points per 1 KD, conversion rate, max redeem percentage, welcome bonuses) must be stored in Firestore in a configuration document and editable from the admin dashboard.
+
+6. Friends Club (affiliate / referral system)
+Implement a referral program named “Friends Club (نادي الأصدقاء)”:
+
+Each customer gets a unique referral code and referral URL.
+
+When a new customer signs up using a referral and completes the first paid order:
+
+The referrer gets a referral bonus in points (e.g., 400 points – make this configurable).
+
+The new customer gets a welcome referral bonus (e.g., 200 points – configurable).
+
+Store all referrals in a referrals collection with fields:
+
+referrer_id, referred_customer_id, first_order_id, status (pending, completed, invalid), created_at, completed_at.
+
+Integrate this with the loyalty system by creating loyalty_transactions of type referral_bonus.
+
+In the customer account, show a dedicated “Friends Club” section:
+
+Referral link and code.
+
+Count of successful referrals.
+
+Points earned through referrals vs. normal orders.
+
+7. Admin and Super Admin dashboards
+Create a secure admin dashboard pages (only accessible to authenticated admin/super_admin with 2FA):
+
+Role management:
+
+super_admin can create, edit, and delete admin accounts.
+
+admin cannot change roles or create other admins.
+
+Customers have no access to admin roles.
+
+Packages and prices management:
+
+Admin UI to manage all services and packages:
+
+Create/update/delete packages.
+
+Set separate prices for sedan and SUV.
+
+Set visibility (active/inactive).
+
+All prices and package definitions stored in a services / packages collection in Firestore.
+
+Loyalty & referral configuration:
+
+Admin screen to edit:
+
+points_per_kd.
+
+Conversion rate (points to KD).
+
+Max redeem percentage per order.
+
+Welcome bonus points.
+
+Referral bonus for referrer and referred friend.
+
+These must update a single configuration document used by all loyalty/referral logic.
+
+Orders management:
+
+Real‑time table/grid of all orders with filters by status, date range, customer, etc.
+
+Ability to change order status (pending, in_progress, completed, cancelled).
+
+If cancelled, require a cancel_reason field (for internal analytics).
+
+Show loyalty and referral impact for each order (points earned/redeemed).
+
+Customers management:
+
+List of customers: name, phone, email, total orders, total spend, current points, number of referrals.
+
+Ability to temporarily block/activate a customer account (e.g., for abuse).
+
+Ability to adjust points manually (with reason), creating a loyalty_transactions entry with modified_by and modified_at.
+
+Content management (blog, testimonials, gallery):
+
+Simple CRUD (create/read/update/delete) UI to manage blog posts, customer reviews, and before/after images.
+
+Analytics & reports:
+
+Dashboard showing:
+
+Total income from orders (by day, month, and custom date range).
+
+Total number of orders (completed vs cancelled) and breakdown by cancel reasons.
+
+Total loyalty points issued vs. redeemed.
+
+Number of new customers and active customers in a date range.
+
+Number of successful referrals and points issued through Friends Club.
+
+Option to export key reports as CSV (for Excel) if possible.
+
+8. Security and Firestore rules
+Design Firestore collections with security in mind and implement strict Security Rules:
+
+Customers:
+
+Can only read and write their own profile and their own orders.
+
+Can only see their own loyalty transactions and referral data.
+
+Admin / Super admin:
+
+Can read all necessary collections (orders, customers, configuration, loyalty, referrals, content).
+
+Only super_admin can modify role assignments and create/delete admin accounts.
+
+No client‑side trusted flags (e.g., no “isAdmin” booleans trusted solely from the client token). Use Firebase custom claims or a roles collection with rules checking it.
+
+Implement an audit log collection for sensitive actions:
+
+When an admin changes prices, loyalty configuration, or manually adjusts points, create an audit_log document with:
+
+action_type, performed_by, performed_at, target_id, old_value, new_value.
+
+For admin and super_admin logins:
+
+Enforce 2FA flow before granting access to admin pages.
+
+Prevent non‑admin roles from accessing any admin routes in both UI routing and Firestore rules.
+
+9. Code quality and future app builds
+Make the code clean and modular with clear comments indicating where each business rule is implemented (loyalty, referrals, authentication, admin permissions).
+
+Use proper state management (e.g., Provider, Riverpod, or Bloc) to keep logic testable and maintainable.
+
+Organize routing so that:
+
+Customer‑facing pages (home, services, booking, loyalty info) are separate from admin routes.
+
+Ensure the project can be built as:
+
+Flutter Web (for WordPress embedding or standalone web).
+
+Flutter Android and iOS apps, without changing the core business logic.
+
+Generate all necessary Flutter code (pages, widgets, services, models, Firebase config placeholders, routing, and localization setup) to make this app run as a complete production‑ready project with the above features and security practices.
+

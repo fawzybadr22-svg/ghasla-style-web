@@ -1,0 +1,424 @@
+أفضل اختيار للمرحلة الحالية 👍
+هنا برومبت كامل جاهز للّصق في وكيل الذكاء الاصطناعي في Replit لبناء مشروع Ghasla Style باستخدام React + Node/Express + Firebase مع نفس كل المميزات اللي اتفقنا عليها (ولاء، نادي الأصدقاء، 3 لغات، 2FA للإدارة، داش بورد قوية، أمان عالي).
+
+Prompt (بالإنجليزية – انسخه كما هو في Replit, stack: fullstack_js):
+
+Build a production‑ready fullstack JavaScript web application for a Kuwaiti mobile car wash service called “Ghasla Style”, with a complete loyalty points system, referral (“Friends Club”) system, multi‑language support (Arabic/English/French), an advanced admin dashboard, and strong security.
+
+Use the following tech stack:
+
+Frontend: React (TypeScript preferred), SPA or Next.js‑like structure, responsive (mobile / tablet / desktop).
+
+Backend: Node.js + Express for REST APIs and server‑side logic.
+
+Database: Firebase Firestore.
+
+Authentication: Firebase Authentication (email/password, Google, phone for customers, email/password + 2FA for admins).
+
+Security: Enforce strict role‑based access control (RBAC) and Firestore Security Rules. No sensitive checks on the client only.
+
+Design the architecture in a clean, modular way:
+
+frontend/src/components/, frontend/src/pages/, frontend/src/hooks/, frontend/src/context/
+
+backend/src/routes/, backend/src/controllers/, backend/src/models/, backend/src/middleware/, backend/src/services/
+
+Shared TypeScript interfaces for key entities (User, Order, ServicePackage, LoyaltyConfig, Referral, etc.).
+
+1. Branding, theming, and languages
+Brand name: Ghasla Style (غسلة ستايل).
+
+Primary colors: dark orange and blue, with neutral gray/white backgrounds.
+
+Implement both light mode and dark mode, with a theme toggle in the UI (stored in localStorage).
+
+Support three languages:
+
+Arabic (RTL, default)
+
+English
+
+French
+
+Implement a language switcher (AR / EN / FR) in the header and also in the footer.
+
+Use an i18n solution (e.g., react-i18next) with JSON translation files for all static texts.
+
+2. Authentication and user roles
+Use Firebase Authentication with these flows:
+
+Customers:
+
+Sign up & login with email + password.
+
+Login with Google.
+
+Login with phone number (SMS OTP) using Firebase phone auth.
+
+Admins / Super Admin:
+
+Login via email + password only.
+
+Implement Two‑Factor Authentication (2FA) from the start for admin and super_admin:
+
+Preferred: Firebase multi‑factor auth with SMS or email OTP.
+
+If not possible, implement a secondary one‑time code (OTP) logic using Express + Firestore + email/SMS provider.
+
+2FA must be required before accessing any admin dashboard routes.
+
+Roles:
+
+customer
+
+admin
+
+super_admin
+
+Store roles in a dedicated users collection in Firestore and/or via Firebase custom claims. Enforce RBAC in:
+
+React (hide/show routes, components).
+
+Express middleware (check JWT, role).
+
+Firestore security rules (only allow permitted operations).
+
+3. Data models (high level)
+Define Firestore collections like:
+
+users:
+
+id, name, email, phone, role (customer/admin/super_admin), created_at, status (active/blocked).
+
+service_packages:
+
+id, name, description, price_sedan, price_suv, category (exterior, interior, full, VIP, monthly), is_active.
+
+orders:
+
+id, customer_id, status (pending, in_progress, completed, cancelled),
+
+car_type (sedan, suv, other), service_package_id, price, payment_method (cash, online),
+
+address, area, preferred_date, preferred_time,
+
+loyalty_points_earned, loyalty_points_redeemed, referral_id,
+
+cancel_reason (if cancelled),
+
+created_at, updated_at.
+
+loyalty_config (single doc or small collection):
+
+points_per_kd (e.g., 35),
+
+conversion_rate (points to KD, e.g., 100 points = 0.4 KD),
+
+max_redeem_percentage (e.g., 0.10 to 0.15),
+
+welcome_bonus_points (e.g., 200),
+
+referrer_bonus_points (e.g., 400),
+
+referred_welcome_points (e.g., 200).
+
+loyalty_transactions:
+
+id, customer_id, order_id (optional), points_change,
+
+type (earn, redeem, referral_bonus, welcome_bonus, admin_adjustment),
+
+created_at, created_by (system/admin id).
+
+referrals:
+
+id, referrer_id, referred_customer_id, first_order_id,
+
+status (pending, completed, invalid), created_at, completed_at.
+
+content_blog, content_testimonials, content_gallery_before_after:
+
+generic fields for blog posts, customer reviews, and before/after images.
+
+audit_logs:
+
+id, action_type, performed_by, performed_at,
+
+target_collection, target_id, old_value, new_value, note.
+
+4. Customer‑facing website (React)
+Build a modern, responsive React frontend with these core pages:
+
+Home page
+
+Hero section introducing Ghasla Style as a mobile car wash service in Kuwait.
+
+Clear CTAs: “Book Now”, “Login / Register”.
+
+Sections describing services, benefits, loyalty program, and Friends Club.
+
+Multi‑language content based on i18n.
+
+About Us
+
+Story, mission, coverage areas in Kuwait, quality assurance, etc.
+
+Services & Packages
+
+Display all packages from service_packages collection.
+
+Show: name, description, sedan price, SUV price, estimated duration.
+
+Group by category (exterior, interior, full, VIP, monthly).
+
+All prices must come from Firestore, not hard‑coded.
+
+Online Booking page
+
+Multi‑step form:
+
+Step 1: Car type, car details.
+
+Step 2: Choose service/package (from Firestore).
+
+Step 3: Enter address/area (text fields now, map optional placeholder), preferred date/time.
+
+Step 4: Payment method (cash, online – online can be a placeholder for now).
+
+On submission, create an orders document with all required fields.
+
+If the user has loyalty points:
+
+Show available points.
+
+Allow the user to choose how many points to redeem, respecting max_redeem_percentage and conversion rate from loyalty_config.
+
+Show order confirmation and let the user view order status in “My Account”.
+
+Customer account area
+
+Profile page: edit name, phone, car info.
+
+Orders page: list of orders with statuses and details.
+
+Loyalty page:
+
+Current points balance.
+
+List of loyalty transactions.
+
+Friends Club page:
+
+Display unique referral link and code.
+
+Explanation of how the referral program works:
+
+1 KD = 35 points.
+
+Example conversion: 100 points = ~0.4 KD.
+
+Referrer bonus and referred friend bonus on the first paid order.
+
+Show statistics: number of successful referrals, points earned through referrals.
+
+Loyalty & Friends Club (public info)
+
+Public page explaining the loyalty system and Friends Club with simple examples.
+
+Emphasize that the system protects the business profit margin via max redeem percentage and controlled points.
+
+Blog, Customer Reviews, Before/After Gallery
+
+Blog page listing posts from content_blog.
+
+Reviews page showing testimonials from content_testimonials.
+
+Gallery page showing before/after images with captions from content_gallery_before_after.
+
+Contact & WhatsApp
+
+Display WhatsApp contact: +965 9606 8518.
+
+Floating WhatsApp button fixed in bottom‑right of all pages (link to wa.me format).
+
+Contact form that stores messages in Firestore (name, phone, message, created_at).
+
+5. Loyalty program logic
+Implement a robust loyalty system according to the latest proposal:
+
+Earning points:
+
+For each completed order, calculate points as:
+earned_points = order_total_kd * loyalty_config.points_per_kd.
+
+Create a loyalty_transactions record of type earn.
+
+Update the customer’s point balance accordingly (either stored as a field in users or computed).
+
+Welcome bonus:
+
+When a new customer completes their first paid order, apply welcome_bonus_points from loyalty_config.
+
+Log it as loyalty_transactions of type welcome_bonus.
+
+Redeeming points:
+
+On the booking page, calculate maximum redeemable value as:
+max_redeem_value = order_total_kd * max_redeem_percentage.
+
+Using the conversion rate, determine how many points can be used.
+
+Apply a discount to the order and record a loyalty_transactions entry of type redeem.
+
+All key numbers (points_per_kd, conversion_rate, max_redeem_percentage, welcome_bonus_points) must be configurable from the admin dashboard via loyalty_config.
+
+6. Friends Club (referral system)
+Implement a full referral program named “Friends Club (نادي الأصدقاء)”:
+
+Each customer gets a unique referral code and URL.
+
+When a new customer signs up using that code or link and completes their first paid order:
+
+The referrer gets referrer_bonus_points.
+
+The new customer gets referred_welcome_points.
+
+All referrals tracked in referrals collection.
+
+Integrate with loyalty:
+
+Create corresponding loyalty_transactions for both users when a referral is completed.
+
+In the admin dashboard:
+
+Show referral statistics: total referrals, successful referrals, points issued via referrals.
+
+7. Admin & Super Admin dashboard (React)
+Create a separate admin section (with protected routes) only accessible to authenticated admin/super_admin with 2FA checked:
+
+Authentication & RBAC:
+
+Admin dashboard routes must be protected by React route guards and Express middleware.
+
+Only admin and super_admin roles can access admin routes; only super_admin can manage roles.
+
+Admin features:
+
+Service & Packages Management
+
+CRUD UI for service_packages:
+
+Add/edit/delete packages.
+
+Set sedan/SUV prices, descriptions, categories, and active status.
+
+Loyalty & Referral Configuration
+
+Form to edit loyalty_config:
+
+points_per_kd
+
+conversion_rate
+
+max_redeem_percentage
+
+welcome_bonus_points
+
+referrer_bonus_points
+
+referred_welcome_points
+
+Changes should be logged in audit_logs.
+
+Orders Management
+
+Real‑time list/table of all orders with filters (status, date range, customer).
+
+Ability to change status (pending, in_progress, completed, cancelled).
+
+If cancelled, require cancel_reason.
+
+Show loyalty/redeem info for each order.
+
+Customers Management
+
+List of customers with:
+
+name, email, phone, total orders, total spend, current loyalty points, number of referrals.
+
+Ability to block/unblock customers.
+
+Ability to adjust loyalty points manually with a required reason (creates loyalty_transactions + audit_logs record).
+
+Content Management (Blog, Reviews, Gallery)
+
+CRUD for blog posts, testimonials, and before/after items.
+
+Analytics & Reports
+
+Dashboard widgets:
+
+Total income by day/month/custom range.
+
+Number of completed vs cancelled orders + breakdown by cancel reason.
+
+Total points issued and redeemed (loyalty load vs liability).
+
+Number of new customers and active customers.
+
+Referral performance (successful referrals, points via Friends Club).
+
+Option to export data to CSV (for Excel).
+
+Super Admin additional features:
+
+Manage admin accounts (create, edit, delete admins).
+
+View full audit_logs.
+
+Override and correct any configuration or points manually.
+
+8. Security requirements
+Apply best‑practice security:
+
+Use Express middleware to:
+
+Verify Firebase ID tokens (JWT) on each protected API route.
+
+Check role (customer/admin/super_admin).
+
+Implement Firebase Firestore Security Rules so that:
+
+Customers can only read/write their own data (profile, orders, loyalty transactions, referrals).
+
+Admins can read collections they manage.
+
+Only admins/super_admin can write to service_packages, loyalty_config, audit_logs, and content collections.
+
+Only super_admin can change roles or access high‑risk configurations.
+
+Implement 2FA for admins/super_admin (via Firebase multi‑factor or custom OTP).
+
+Implement an audit_logs collection for all sensitive changes (config, prices, manual points adjustment, role changes).
+
+No secrets (API keys, service account JSONs, etc.) should be exposed in frontend code. Use environment variables on the backend.
+
+9. Code quality
+Use TypeScript on both frontend and backend if possible.
+
+Follow clean folder structure and separation of concerns (controllers, services, models, routes, middleware).
+
+Add comments around critical business rules: loyalty calculations, referral completion, admin role checks.
+
+Make the project easy to extend later (for example, adding payments or mobile apps that reuse the same backend).
+
+Generate all necessary frontend (React) and backend (Express) code, including:
+
+Pages, components, routes, protected routes, context/state for auth and localization.
+
+Node/Express server with API routes for orders, users, loyalty, referrals, content, and admin operations.
+
+Firebase initialization and Firestore data access layer.
+
+Example Firestore Security Rules skeleton matching the data access patterns.
+
