@@ -150,33 +150,24 @@ export default function Home() {
   const beforeAfterComparisons = [
     {
       id: 1,
-      image: beforeAfterExterior,
-      titleAr: "غسيل خارجي",
-      titleEn: "External Wash",
-      titleFr: "Lavage Extérieur",
-      descAr: "من الغبار والأوساخ إلى لمعان مثالي",
-      descEn: "From dusty and dirty to perfect shine",
-      descFr: "De poussiéreux à brillance parfaite",
+      image: beforeAfterDetailing,
+      titleEn: "Full Detailing",
+      ctaEn: "Turn dull paint into a mirror-finish showroom shine.",
+      whatsappMessage: "Hi, I'd like to book a Full Detailing service.",
     },
     {
       id: 2,
       image: beforeAfterInterior,
-      titleAr: "تنظيف داخلي",
-      titleEn: "Interior Cleaning",
-      titleFr: "Nettoyage Intérieur",
-      descAr: "من البقع والغبار إلى نظافة تامة",
-      descEn: "From stains and dust to spotless clean",
-      descFr: "Des taches à une propreté impeccable",
+      titleEn: "Interior Deep Clean",
+      ctaEn: "Breathe in a fresh, spotless cabin - every trip.",
+      whatsappMessage: "Hi, I'd like to book an Interior Deep Clean.",
     },
     {
       id: 3,
-      image: beforeAfterDetailing,
-      titleAr: "تفصيل كامل",
-      titleEn: "Full Detailing",
-      titleFr: "Détaillage Complet",
-      descAr: "تصحيح الطلاء ولمعان كالمرآة",
-      descEn: "Paint correction and mirror-like finish",
-      descFr: "Correction peinture et finition miroir",
+      image: beforeAfterExterior,
+      titleEn: "Exterior Wash",
+      ctaEn: "Remove weeks of dirt in just one premium wash.",
+      whatsappMessage: "Hi, I'd like to book an Exterior Wash.",
     },
   ];
 
@@ -644,57 +635,42 @@ export default function Home() {
             className="text-center mb-12"
           >
             <motion.h2 variants={fadeInUp} className="text-3xl md:text-4xl font-bold mb-4">
-              {getLocalizedText("قبل وبعد", "Before & After", "Avant & Après")}
+              Before & After Results
             </motion.h2>
             <motion.p variants={fadeInUp} className="text-lg text-white/70 max-w-2xl mx-auto">
-              {getLocalizedText(
-                "شاهد الفرق الذي نحدثه - نتائج حقيقية من عملائنا السعداء",
-                "See the difference we make - real results from our happy customers",
-                "Voyez la différence - résultats réels de nos clients satisfaits"
-              )}
-            </motion.p>
-            <motion.p variants={fadeInUp} className="text-sm text-white/50 mt-2">
-              {getLocalizedText(
-                "اسحب الشريط لمقارنة النتائج",
-                "Drag the slider to compare results",
-                "Faites glisser le curseur pour comparer"
-              )}
+              See the difference we make - real results from our happy customers
             </motion.p>
           </motion.div>
 
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={staggerContainer}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-6"
-          >
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {beforeAfterComparisons.map((comparison, index) => (
               <motion.div
                 key={comparison.id}
-                variants={fadeInUp}
-                custom={index}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: index * 0.15, ease: "easeOut" }}
                 className="group"
               >
-                <div className="relative rounded-xl overflow-hidden shadow-2xl bg-black/20 backdrop-blur-sm">
+                <div className="relative rounded-xl overflow-hidden shadow-2xl bg-black/30 backdrop-blur-sm border border-white/10 transition-all duration-500 group-hover:shadow-[0_0_30px_rgba(249,115,22,0.3)] group-hover:border-primary/30">
                   <div className="relative aspect-video overflow-hidden select-none">
                     <img
                       src={comparison.image}
-                      alt={getLocalizedText(comparison.titleAr, comparison.titleEn, comparison.titleFr)}
-                      className="w-full h-full object-cover"
+                      alt={comparison.titleEn}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       draggable={false}
                     />
                     <div 
-                      className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent"
+                      className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent transition-opacity duration-300 group-hover:opacity-80"
                       style={{ 
                         clipPath: `inset(0 ${100 - sliderPositions[comparison.id]}% 0 0)` 
                       }}
                     />
                     <div 
-                      className="absolute top-0 bottom-0 w-1 bg-white shadow-lg cursor-ew-resize z-10"
+                      className="absolute top-0 bottom-0 w-1 bg-white shadow-lg cursor-ew-resize z-10 transition-all duration-300 group-hover:shadow-[0_0_15px_rgba(255,255,255,0.5)]"
                       style={{ left: `${sliderPositions[comparison.id]}%`, transform: 'translateX(-50%)' }}
                     >
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center">
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
                         <div className="flex gap-0.5">
                           <div className="w-0.5 h-3 bg-gray-400 rounded-full" />
                           <div className="w-0.5 h-3 bg-gray-400 rounded-full" />
@@ -713,36 +689,50 @@ export default function Home() {
                     <motion.div 
                       initial={{ opacity: 0, x: -10 }}
                       whileInView={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 + index * 0.1 }}
-                      className="absolute top-3 start-3 z-10"
+                      transition={{ delay: 0.3 + index * 0.15 }}
+                      className="absolute top-3 left-3 z-10"
                     >
-                      <Badge className="bg-[#22c55e] text-white shadow-lg">
-                        {getLocalizedText("قبل", "Before", "Avant")}
+                      <Badge className="bg-gray-600/90 text-white shadow-lg backdrop-blur-sm px-3 py-1">
+                        Before
                       </Badge>
                     </motion.div>
                     <motion.div 
                       initial={{ opacity: 0, x: 10 }}
                       whileInView={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 + index * 0.1 }}
-                      className="absolute top-3 end-3 z-10"
+                      transition={{ delay: 0.3 + index * 0.15 }}
+                      className="absolute top-3 right-3 z-10"
                     >
-                      <Badge className="bg-primary text-primary-foreground shadow-lg">
-                        {getLocalizedText("بعد", "After", "Après")}
+                      <Badge className="bg-primary text-primary-foreground shadow-lg backdrop-blur-sm px-3 py-1">
+                        After
                       </Badge>
                     </motion.div>
                   </div>
-                  <div className="p-4 text-center">
-                    <h3 className="text-lg font-semibold mb-1">
-                      {getLocalizedText(comparison.titleAr, comparison.titleEn, comparison.titleFr)}
+                  <div className="p-5 text-center space-y-3">
+                    <h3 className="text-xl font-bold">
+                      {comparison.titleEn}
                     </h3>
-                    <p className="text-sm text-white/60">
-                      {getLocalizedText(comparison.descAr, comparison.descEn, comparison.descFr)}
+                    <p className="text-sm text-white/70 leading-relaxed">
+                      {comparison.ctaEn}
                     </p>
+                    <a
+                      href={`https://wa.me/96596068518?text=${encodeURIComponent(comparison.whatsappMessage)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block"
+                    >
+                      <Button 
+                        className="bg-[#25D366] hover:bg-[#128C7E] text-white font-medium transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-[0_0_20px_rgba(37,211,102,0.4)]"
+                        data-testid={`whatsapp-order-${comparison.id}`}
+                      >
+                        <SiWhatsapp className="h-5 w-5 me-2" />
+                        Order on WhatsApp
+                      </Button>
+                    </a>
                   </div>
                 </div>
               </motion.div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 
