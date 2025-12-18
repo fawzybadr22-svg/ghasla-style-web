@@ -190,7 +190,9 @@ export const setUserRole = functions.https.onCall(
         );
       }
 
+      const existingClaims = targetUser.customClaims || {};
       await admin.auth().setCustomUserClaims(targetUser.uid, { 
+        ...existingClaims,
         role: data.role,
         updatedAt: new Date().toISOString(),
         updatedBy: context.auth.uid
