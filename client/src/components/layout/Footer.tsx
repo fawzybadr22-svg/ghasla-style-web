@@ -155,6 +155,43 @@ export function Footer() {
           </p>
         </div>
       </div>
+
+      {/* Designer Credit Bar - This is the personal contact of designer Fawzy Badr, NOT Ghasla Style support */}
+      <div className="bg-muted/80 border-t py-3">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-3 text-sm">
+            {/* Copyright - Left on desktop */}
+            <p className="text-muted-foreground order-2 md:order-1">
+              © {currentYear} Ghasla Style
+            </p>
+
+            {/* Designer Credit - Center */}
+            <p className="order-1 md:order-2 flex items-center gap-1.5">
+              <span className="text-muted-foreground">Designed by</span>
+              <span 
+                className="font-semibold text-chart-1 hover:text-primary transition-colors cursor-default"
+                data-testid="text-designer-name"
+              >
+                Fawzy Badr
+              </span>
+            </p>
+
+            {/* Designer WhatsApp - Right on desktop */}
+            {/* NOTE: This is the designer's personal WhatsApp (Fawzy Badr), NOT Ghasla Style booking/support */}
+            <a
+              href="https://wa.me/201281863902"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="order-3 flex items-center gap-2 text-muted-foreground hover:text-[#25D366] transition-all hover:scale-105"
+              title="Contact Designer - Fawzy Badr"
+              data-testid="link-designer-whatsapp"
+            >
+              <SiWhatsapp className="h-5 w-5" />
+              <span className="text-xs hidden sm:inline">Designer Contact</span>
+            </a>
+          </div>
+        </div>
+      </div>
     </footer>
   );
 }
