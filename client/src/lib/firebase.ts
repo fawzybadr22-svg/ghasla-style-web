@@ -26,6 +26,8 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
+console.log("firebaseConfig =", firebaseConfig);
+
 // Initialize Firebase only if not already initialized (prevents duplicate-app error during hot reload)
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
