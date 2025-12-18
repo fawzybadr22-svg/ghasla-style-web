@@ -20,14 +20,6 @@ const defaultPackages: ServicePackage[] = [
   { id: "4", nameAr: "VIP / تفصيلي", nameEn: "VIP / Detailing", nameFr: "VIP / Détaillage", descriptionAr: "", descriptionEn: "", descriptionFr: "", priceSedanKD: 15, priceSuvKD: 20, estimatedMinutes: 120, category: "vip", isActive: true, createdAt: "" },
 ];
 
-const areas = [
-  { ar: "العاصمة", en: "Capital", fr: "Capitale" },
-  { ar: "حولي", en: "Hawalli", fr: "Hawalli" },
-  { ar: "الفروانية", en: "Farwaniya", fr: "Farwaniya" },
-  { ar: "الأحمدي", en: "Ahmadi", fr: "Ahmadi" },
-  { ar: "الجهراء", en: "Jahra", fr: "Jahra" },
-  { ar: "مبارك الكبير", en: "Mubarak Al-Kabeer", fr: "Mubarak Al-Kabeer" },
-];
 
 export default function Booking() {
   const { t, i18n } = useTranslation();
@@ -56,11 +48,24 @@ export default function Booking() {
     queryKey: ["/api/packages"],
   });
 
+  const { data: areas } = useQuery<string[]>({
+    queryKey: ["/api/areas"],
+  });
+
+  const { data: loyaltyConfigData } = useQuery<{
+    conversionRate: number;
+    maxRedeemPercentage: number;
+    pointsPerKD: number;
+  }>({
+    queryKey: ["/api/loyalty/config"],
+  });
+
   const displayPackages = packages?.length ? packages : defaultPackages;
+  const displayAreas = areas || ["Capital", "Hawalli", "Farwaniya", "Ahmadi", "Jahra", "Mubarak Al-Kabeer"];
   const selectedPackage = displayPackages.find(p => p.id === formData.packageId);
   const basePrice = selectedPackage ? (formData.carType === "suv" ? selectedPackage.priceSuvKD : selectedPackage.priceSedanKD) : 0;
   
-  const loyaltyConfig = { conversionRate: 0.004, maxRedeemPercentage: 0.15 };
+  const loyaltyConfig = loyaltyConfigData || { conversionRate: 0.004, maxRedeemPercentage: 0.15 };
   const maxRedeemPoints = user?.loyaltyPoints || 0;
   const maxRedeemValue = basePrice * loyaltyConfig.maxRedeemPercentage;
   const maxAllowedPoints = Math.min(maxRedeemPoints, maxRedeemValue / loyaltyConfig.conversionRate);
@@ -95,10 +100,18 @@ export default function Booking() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...formData,
           customerId: user.id,
-          priceKD: finalPrice,
+          carType: formData.carType,
+          carDetails: formData.carDetails,
+          servicePackageId: formData.packageId,
+          address: formData.address,
+          area: formData.area,
+          preferredDate: formData.date,
+          preferredTime: formData.time,
+          paymentMethod: formData.paymentMethod,
+          priceKD: 0,
           loyaltyPointsRedeemed: formData.pointsToRedeem,
+          status: "pending",
         }),
       });
 
@@ -238,15 +251,15 @@ export default function Booking() {
                     onValueChange={(value) => setFormData({ ...formData, area: value })}
                     className="grid grid-cols-2 md:grid-cols-3 gap-2"
                   >
-                    {areas.map((area) => (
+                    {displayAreas.map((area) => (
                       <Label
-                        key={area.en}
+                        key={area}
                         className={`flex items-center justify-center p-3 rounded-lg border cursor-pointer transition-colors ${
-                          formData.area === area.en ? "border-primary bg-primary/5" : "border-muted hover:border-primary/50"
+                          formData.area === area ? "border-primary bg-primary/5" : "border-muted hover:border-primary/50"
                         }`}
                       >
-                        <RadioGroupItem value={area.en} className="sr-only" />
-                        {getLocalizedText(area.ar, area.en, area.fr)}
+                        <RadioGroupItem value={area} className="sr-only" />
+                        {area}
                       </Label>
                     ))}
                   </RadioGroup>

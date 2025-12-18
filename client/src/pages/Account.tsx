@@ -22,17 +22,35 @@ export default function Account() {
   };
 
   const { data: orders, isLoading: ordersLoading } = useQuery<Order[]>({
-    queryKey: ["/api/orders", user?.id],
+    queryKey: ["/api/orders/customer", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const res = await fetch(`/api/orders/customer/${user.id}`);
+      if (!res.ok) throw new Error("Failed to fetch orders");
+      return res.json();
+    },
     enabled: !!user,
   });
 
   const { data: loyaltyTransactions } = useQuery<LoyaltyTransaction[]>({
-    queryKey: ["/api/loyalty/transactions", user?.id],
+    queryKey: ["/api/users", user?.id, "loyalty"],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const res = await fetch(`/api/users/${user.id}/loyalty`);
+      if (!res.ok) throw new Error("Failed to fetch loyalty transactions");
+      return res.json();
+    },
     enabled: !!user,
   });
 
   const { data: referrals } = useQuery<Referral[]>({
-    queryKey: ["/api/referrals", user?.id],
+    queryKey: ["/api/users", user?.id, "referrals"],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const res = await fetch(`/api/users/${user.id}/referrals`);
+      if (!res.ok) throw new Error("Failed to fetch referrals");
+      return res.json();
+    },
     enabled: !!user,
   });
 

@@ -1,16 +1,932 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { z } from "zod";
+import { 
+  insertServicePackageSchema, insertOrderSchema, insertContactMessageSchema,
+  insertBlogPostSchema, insertTestimonialSchema, insertGalleryItemSchema,
+  kuwaitAreas
+} from "@shared/schema";
+
+// Default service packages for seeding
+const defaultPackages = [
+  {
+    nameAr: "غسيل خارجي",
+    nameEn: "Exterior Wash",
+    nameFr: "Lavage Extérieur",
+    descriptionAr: "غسيل شامل للجسم الخارجي مع تنظيف الإطارات والجنوط",
+    descriptionEn: "Complete exterior wash with tire and rim cleaning",
+    descriptionFr: "Lavage extérieur complet avec nettoyage des pneus et jantes",
+    priceSedanKD: 3,
+    priceSuvKD: 4,
+    estimatedMinutes: 30,
+    category: "exterior" as const,
+    isActive: true,
+  },
+  {
+    nameAr: "تنظيف داخلي",
+    nameEn: "Interior Clean",
+    nameFr: "Nettoyage Intérieur",
+    descriptionAr: "تنظيف شامل للمقصورة الداخلية مع كنس وتعقيم",
+    descriptionEn: "Complete interior cleaning with vacuuming and sanitization",
+    descriptionFr: "Nettoyage intérieur complet avec aspiration et désinfection",
+    priceSedanKD: 5,
+    priceSuvKD: 7,
+    estimatedMinutes: 45,
+    category: "interior" as const,
+    isActive: true,
+  },
+  {
+    nameAr: "غسيل كامل",
+    nameEn: "Full Wash",
+    nameFr: "Lavage Complet",
+    descriptionAr: "غسيل خارجي وداخلي شامل مع التعقيم والتعطير",
+    descriptionEn: "Complete exterior and interior wash with sanitization and freshening",
+    descriptionFr: "Lavage extérieur et intérieur complet avec désinfection",
+    priceSedanKD: 7,
+    priceSuvKD: 10,
+    estimatedMinutes: 60,
+    category: "full" as const,
+    isActive: true,
+  },
+  {
+    nameAr: "VIP تفصيلي",
+    nameEn: "VIP Detailing",
+    nameFr: "Détaillage VIP",
+    descriptionAr: "خدمة تفصيلية شاملة مع تلميع السيارة وحماية الطلاء",
+    descriptionEn: "Full detailing service with car polish and paint protection",
+    descriptionFr: "Service de détaillage complet avec polish et protection",
+    priceSedanKD: 15,
+    priceSuvKD: 20,
+    estimatedMinutes: 120,
+    category: "vip" as const,
+    isActive: true,
+  },
+  {
+    nameAr: "اشتراك شهري (4 غسلات)",
+    nameEn: "Monthly Package (4 washes)",
+    nameFr: "Forfait Mensuel (4 lavages)",
+    descriptionAr: "4 غسلات كاملة شهرياً بسعر مخفض",
+    descriptionEn: "4 full washes per month at discounted rate",
+    descriptionFr: "4 lavages complets par mois à tarif réduit",
+    priceSedanKD: 25,
+    priceSuvKD: 35,
+    estimatedMinutes: 60,
+    category: "monthly" as const,
+    isActive: true,
+  },
+];
+
+// Seed service packages if none exist
+async function seedServicePackages() {
+  const existing = await storage.getServicePackages();
+  if (existing.length === 0) {
+    for (const pkg of defaultPackages) {
+      await storage.createServicePackage(pkg);
+    }
+    console.log("Seeded default service packages");
+  }
+}
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // put application routes here
-  // prefix all routes with /api
+  // Seed data on startup
+  await seedServicePackages();
 
-  // use storage to perform CRUD operations on the storage interface
-  // e.g. storage.insertUser(user) or storage.getUserByUsername(username)
+  // ====================
+  // PUBLIC ROUTES
+  // ====================
+
+  // Service Packages (public)
+  app.get("/api/packages", async (req, res) => {
+    try {
+      const packages = await storage.getServicePackages(true);
+      res.json(packages);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/packages/:id", async (req, res) => {
+    try {
+      const pkg = await storage.getServicePackage(req.params.id);
+      if (!pkg) {
+        return res.status(404).json({ error: "Package not found" });
+      }
+      res.json(pkg);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Loyalty Config (public read)
+  app.get("/api/loyalty/config", async (req, res) => {
+    try {
+      const config = await storage.getLoyaltyConfig();
+      res.json(config);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Kuwait Areas (public)
+  app.get("/api/areas", (req, res) => {
+    res.json(kuwaitAreas);
+  });
+
+  // Blog Posts (public)
+  app.get("/api/blog", async (req, res) => {
+    try {
+      const posts = await storage.getBlogPosts(true);
+      res.json(posts);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/blog/:id", async (req, res) => {
+    try {
+      const post = await storage.getBlogPost(req.params.id);
+      if (!post || !post.isPublished) {
+        return res.status(404).json({ error: "Post not found" });
+      }
+      res.json(post);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Testimonials (public approved)
+  app.get("/api/testimonials", async (req, res) => {
+    try {
+      const testimonials = await storage.getTestimonials(true);
+      res.json(testimonials);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Gallery (public)
+  app.get("/api/gallery", async (req, res) => {
+    try {
+      const items = await storage.getGalleryItems(true);
+      res.json(items);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Contact Messages (public create)
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const data = insertContactMessageSchema.parse(req.body);
+      const message = await storage.createContactMessage(data);
+      res.status(201).json(message);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // ====================
+  // USER ROUTES (requires authentication)
+  // ====================
+
+  // User Profile
+  app.get("/api/users/:id", async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      // Remove sensitive fields
+      const { twoFactorSecret, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/users/email/:email", async (req, res) => {
+    try {
+      const user = await storage.getUserByEmail(req.params.email);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      const { twoFactorSecret, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/users", async (req, res) => {
+    try {
+      const { id, ...userData } = req.body;
+      if (!id) {
+        return res.status(400).json({ error: "User ID is required (from Firebase)" });
+      }
+      
+      // Check if user exists
+      const existing = await storage.getUser(id);
+      if (existing) {
+        return res.json(existing);
+      }
+
+      // Check if referred by someone
+      let referredBy = userData.referredBy;
+      if (referredBy) {
+        const referrer = await storage.getUserByReferralCode(referredBy);
+        if (referrer) {
+          referredBy = referrer.id;
+        } else {
+          referredBy = undefined;
+        }
+      }
+
+      const user = await storage.createUser({ ...userData, id, referredBy });
+      
+      // Create referral record if referred
+      if (referredBy) {
+        await storage.createReferral({
+          referrerId: referredBy,
+          referredCustomerId: id,
+          status: "pending",
+        });
+      }
+
+      res.status(201).json(user);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/users/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateUser(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      const { twoFactorSecret, ...safeUser } = updated;
+      res.json(safeUser);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // User's Loyalty Transactions
+  app.get("/api/users/:id/loyalty", async (req, res) => {
+    try {
+      const transactions = await storage.getLoyaltyTransactions(req.params.id);
+      res.json(transactions);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // User's Referrals
+  app.get("/api/users/:id/referrals", async (req, res) => {
+    try {
+      const referrals = await storage.getReferralsByReferrer(req.params.id);
+      res.json(referrals);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Referral code lookup
+  app.get("/api/referral/:code", async (req, res) => {
+    try {
+      const user = await storage.getUserByReferralCode(req.params.code);
+      if (!user) {
+        return res.status(404).json({ error: "Invalid referral code" });
+      }
+      res.json({ valid: true, referrerName: user.name });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ====================
+  // ORDERS
+  // ====================
+
+  // Customer's orders
+  app.get("/api/orders/customer/:customerId", async (req, res) => {
+    try {
+      const orders = await storage.getOrdersByCustomer(req.params.customerId);
+      res.json(orders);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create order
+  app.post("/api/orders", async (req, res) => {
+    try {
+      const orderData = insertOrderSchema.parse(req.body);
+      
+      // Get customer for loyalty calculations
+      const customer = await storage.getUser(orderData.customerId);
+      if (!customer) {
+        return res.status(400).json({ error: "Customer not found" });
+      }
+      if (customer.status === "blocked") {
+        return res.status(403).json({ error: "Account is blocked" });
+      }
+
+      // Get service package to calculate proper price server-side
+      const servicePackage = await storage.getPackage(orderData.servicePackageId);
+      if (!servicePackage) {
+        return res.status(400).json({ error: "Invalid service package" });
+      }
+
+      // Calculate base price from package and car type
+      const carType = orderData.carType as "sedan" | "suv";
+      const basePrice = carType === "suv" ? servicePackage.priceSuvKD : servicePackage.priceSedanKD;
+
+      // Get loyalty config
+      const loyaltyConfig = await storage.getLoyaltyConfig();
+
+      // Validate points redemption
+      let pointsToRedeem = orderData.loyaltyPointsRedeemed || 0;
+      let discountApplied = 0;
+      
+      if (pointsToRedeem > 0) {
+        if (pointsToRedeem > customer.loyaltyPoints) {
+          return res.status(400).json({ error: "Insufficient loyalty points" });
+        }
+        const maxDiscount = basePrice * loyaltyConfig.maxRedeemPercentage;
+        const pointValue = pointsToRedeem * loyaltyConfig.conversionRate;
+        discountApplied = Math.min(pointValue, maxDiscount);
+      }
+
+      // Calculate final price
+      const finalPrice = Math.max(0, basePrice - discountApplied);
+
+      // Create order with server-calculated price
+      const order = await storage.createOrder({
+        ...orderData,
+        priceKD: finalPrice,
+        discountApplied,
+        loyaltyPointsRedeemed: pointsToRedeem,
+      });
+
+      // Deduct redeemed points
+      if (pointsToRedeem > 0) {
+        await storage.updateUser(customer.id, {
+          loyaltyPoints: customer.loyaltyPoints - pointsToRedeem,
+        });
+        await storage.createLoyaltyTransaction({
+          customerId: customer.id,
+          orderId: order.id,
+          pointsChange: -pointsToRedeem,
+          type: "redeem",
+          note: `Redeemed for order ${order.id}`,
+          createdBy: "system",
+        });
+      }
+
+      res.status(201).json(order);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Get single order
+  app.get("/api/orders/:id", async (req, res) => {
+    try {
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      res.json(order);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update order status (with loyalty points on completion)
+  app.patch("/api/orders/:id", async (req, res) => {
+    try {
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      const { status, cancelReason, ...rest } = req.body;
+
+      // Handle order completion - award loyalty points
+      if (status === "completed" && order.status !== "completed") {
+        const loyaltyConfig = await storage.getLoyaltyConfig();
+        const customer = await storage.getUser(order.customerId);
+        
+        if (customer) {
+          // Calculate points earned
+          const pointsEarned = Math.floor(order.priceKD * loyaltyConfig.pointsPerKD);
+          
+          // Update order with points earned
+          const updateData: any = { status, loyaltyPointsEarned: pointsEarned, completedAt: new Date() };
+          const updated = await storage.updateOrder(req.params.id, updateData);
+
+          // Award points to customer
+          await storage.updateUser(customer.id, {
+            loyaltyPoints: customer.loyaltyPoints + pointsEarned,
+          });
+
+          // Create transaction record
+          await storage.createLoyaltyTransaction({
+            customerId: customer.id,
+            orderId: order.id,
+            pointsChange: pointsEarned,
+            type: "earn",
+            note: `Earned from order ${order.id}`,
+            createdBy: "system",
+          });
+
+          // Check if this is first order for referral bonus
+          const customerOrders = await storage.getOrdersByCustomer(customer.id);
+          const completedOrders = customerOrders.filter(o => o.status === "completed");
+          
+          if (completedOrders.length === 1 && customer.referredBy) {
+            // First completed order - award referral bonuses
+            const referral = await storage.getReferralByReferred(customer.id);
+            if (referral && referral.status === "pending") {
+              const referrer = await storage.getUser(referral.referrerId);
+              
+              if (referrer) {
+                // Award referrer bonus
+                await storage.updateUser(referrer.id, {
+                  loyaltyPoints: referrer.loyaltyPoints + loyaltyConfig.referrerBonusPoints,
+                });
+                await storage.createLoyaltyTransaction({
+                  customerId: referrer.id,
+                  orderId: order.id,
+                  pointsChange: loyaltyConfig.referrerBonusPoints,
+                  type: "referral_bonus",
+                  note: `Referral bonus for ${customer.name}`,
+                  createdBy: "system",
+                });
+
+                // Award referred welcome bonus
+                await storage.updateUser(customer.id, {
+                  loyaltyPoints: customer.loyaltyPoints + pointsEarned + loyaltyConfig.referredWelcomePoints,
+                });
+                await storage.createLoyaltyTransaction({
+                  customerId: customer.id,
+                  orderId: order.id,
+                  pointsChange: loyaltyConfig.referredWelcomePoints,
+                  type: "welcome_bonus",
+                  note: "Welcome bonus from referral",
+                  createdBy: "system",
+                });
+
+                // Complete referral
+                await storage.updateReferral(referral.id, {
+                  status: "completed",
+                  firstOrderId: order.id,
+                  completedAt: new Date(),
+                });
+              }
+            }
+          }
+
+          return res.json(updated);
+        }
+      }
+
+      // Handle cancellation
+      if (status === "cancelled") {
+        const updated = await storage.updateOrder(req.params.id, { status, cancelReason });
+        return res.json(updated);
+      }
+
+      // Regular update
+      const updated = await storage.updateOrder(req.params.id, { status, ...rest });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // ====================
+  // ADMIN ROUTES
+  // ====================
+
+  // Admin: Get all packages (including inactive)
+  app.get("/api/admin/packages", async (req, res) => {
+    try {
+      const packages = await storage.getServicePackages(false);
+      res.json(packages);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Create package
+  app.post("/api/admin/packages", async (req, res) => {
+    try {
+      const data = insertServicePackageSchema.parse(req.body);
+      const pkg = await storage.createServicePackage(data);
+      
+      // Audit log
+      await storage.createAuditLog({
+        actionType: "create_package",
+        performedBy: req.body.performedBy || "admin",
+        targetCollection: "service_packages",
+        targetId: pkg.id,
+        newValue: JSON.stringify(pkg),
+      });
+
+      res.status(201).json(pkg);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Admin: Update package
+  app.patch("/api/admin/packages/:id", async (req, res) => {
+    try {
+      const oldPkg = await storage.getServicePackage(req.params.id);
+      const updated = await storage.updateServicePackage(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Package not found" });
+      }
+
+      // Audit log
+      await storage.createAuditLog({
+        actionType: "update_package",
+        performedBy: req.body.performedBy || "admin",
+        targetCollection: "service_packages",
+        targetId: updated.id,
+        oldValue: JSON.stringify(oldPkg),
+        newValue: JSON.stringify(updated),
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Admin: Delete package
+  app.delete("/api/admin/packages/:id", async (req, res) => {
+    try {
+      const pkg = await storage.getServicePackage(req.params.id);
+      if (!pkg) {
+        return res.status(404).json({ error: "Package not found" });
+      }
+
+      await storage.deleteServicePackage(req.params.id);
+
+      // Audit log
+      await storage.createAuditLog({
+        actionType: "delete_package",
+        performedBy: req.query.performedBy as string || "admin",
+        targetCollection: "service_packages",
+        targetId: req.params.id,
+        oldValue: JSON.stringify(pkg),
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Get all orders
+  app.get("/api/admin/orders", async (req, res) => {
+    try {
+      const { status, startDate, endDate } = req.query;
+      const filters: any = {};
+      if (status) filters.status = status as string;
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      
+      const orders = await storage.getOrders(filters);
+      res.json(orders);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Get all users
+  app.get("/api/admin/users", async (req, res) => {
+    try {
+      const { role, status } = req.query;
+      const filters: any = {};
+      if (role) filters.role = role as string;
+      if (status) filters.status = status as string;
+      
+      const users = await storage.getUsers(filters);
+      // Remove sensitive data
+      const safeUsers = users.map(({ twoFactorSecret, ...u }) => u);
+      res.json(safeUsers);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Block/unblock user
+  app.patch("/api/admin/users/:id/status", async (req, res) => {
+    try {
+      const { status, performedBy } = req.body;
+      if (!["active", "blocked"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const updated = await storage.updateUser(req.params.id, { status });
+
+      // Audit log
+      await storage.createAuditLog({
+        actionType: status === "blocked" ? "block_user" : "unblock_user",
+        performedBy: performedBy || "admin",
+        targetCollection: "users",
+        targetId: req.params.id,
+        oldValue: JSON.stringify({ status: user.status }),
+        newValue: JSON.stringify({ status }),
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Admin: Adjust user points
+  app.post("/api/admin/users/:id/points", async (req, res) => {
+    try {
+      const { pointsChange, note, performedBy } = req.body;
+      if (typeof pointsChange !== "number") {
+        return res.status(400).json({ error: "Points change must be a number" });
+      }
+
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const newPoints = Math.max(0, user.loyaltyPoints + pointsChange);
+      await storage.updateUser(req.params.id, { loyaltyPoints: newPoints });
+
+      const tx = await storage.createLoyaltyTransaction({
+        customerId: req.params.id,
+        pointsChange,
+        type: "admin_adjustment",
+        note,
+        createdBy: performedBy || "admin",
+      });
+
+      // Audit log
+      await storage.createAuditLog({
+        actionType: "adjust_points",
+        performedBy: performedBy || "admin",
+        targetCollection: "users",
+        targetId: req.params.id,
+        oldValue: JSON.stringify({ loyaltyPoints: user.loyaltyPoints }),
+        newValue: JSON.stringify({ loyaltyPoints: newPoints, adjustment: pointsChange }),
+        note,
+      });
+
+      res.json({ newPoints, transaction: tx });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Admin: Update loyalty config
+  app.patch("/api/admin/loyalty/config", async (req, res) => {
+    try {
+      const { performedBy, ...configData } = req.body;
+      const oldConfig = await storage.getLoyaltyConfig();
+      const updated = await storage.updateLoyaltyConfig(configData);
+
+      // Audit log
+      await storage.createAuditLog({
+        actionType: "update_loyalty_config",
+        performedBy: performedBy || "admin",
+        targetCollection: "loyalty_config",
+        targetId: updated.id,
+        oldValue: JSON.stringify(oldConfig),
+        newValue: JSON.stringify(updated),
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Admin: Blog posts CRUD
+  app.get("/api/admin/blog", async (req, res) => {
+    try {
+      const posts = await storage.getBlogPosts(false);
+      res.json(posts);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/admin/blog", async (req, res) => {
+    try {
+      const data = insertBlogPostSchema.parse(req.body);
+      const post = await storage.createBlogPost(data);
+      res.status(201).json(post);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/admin/blog/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateBlogPost(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Post not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/admin/blog/:id", async (req, res) => {
+    try {
+      await storage.deleteBlogPost(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Testimonials CRUD
+  app.get("/api/admin/testimonials", async (req, res) => {
+    try {
+      const testimonials = await storage.getTestimonials(false);
+      res.json(testimonials);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/admin/testimonials", async (req, res) => {
+    try {
+      const data = insertTestimonialSchema.parse(req.body);
+      const testimonial = await storage.createTestimonial(data);
+      res.status(201).json(testimonial);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/admin/testimonials/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateTestimonial(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Testimonial not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/admin/testimonials/:id", async (req, res) => {
+    try {
+      await storage.deleteTestimonial(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Gallery CRUD
+  app.get("/api/admin/gallery", async (req, res) => {
+    try {
+      const items = await storage.getGalleryItems(false);
+      res.json(items);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/admin/gallery", async (req, res) => {
+    try {
+      const data = insertGalleryItemSchema.parse(req.body);
+      const item = await storage.createGalleryItem(data);
+      res.status(201).json(item);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/admin/gallery/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateGalleryItem(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Gallery item not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/admin/gallery/:id", async (req, res) => {
+    try {
+      await storage.deleteGalleryItem(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Contact messages
+  app.get("/api/admin/messages", async (req, res) => {
+    try {
+      const messages = await storage.getContactMessages();
+      res.json(messages);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/admin/messages/:id/read", async (req, res) => {
+    try {
+      await storage.markContactMessageRead(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/admin/messages/:id", async (req, res) => {
+    try {
+      await storage.deleteContactMessage(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Audit logs
+  app.get("/api/admin/audit-logs", async (req, res) => {
+    try {
+      const { performedBy, targetCollection } = req.query;
+      const filters: any = {};
+      if (performedBy) filters.performedBy = performedBy as string;
+      if (targetCollection) filters.targetCollection = targetCollection as string;
+      
+      const logs = await storage.getAuditLogs(filters);
+      res.json(logs);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Analytics
+  app.get("/api/admin/analytics", async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const end = endDate ? new Date(endDate as string) : new Date();
+      
+      const analytics = await storage.getAnalytics(start, end);
+      res.json(analytics);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: CSV Export
+  app.get("/api/admin/export/orders", async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const filters: any = {};
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+      
+      const orders = await storage.getOrders(filters);
+      
+      const csv = [
+        "ID,Customer ID,Status,Car Type,Service Package,Price (KD),Payment Method,Area,Date,Time,Points Earned,Points Redeemed,Discount,Created At",
+        ...orders.map(o => 
+          `${o.id},${o.customerId},${o.status},${o.carType},${o.servicePackageId},${o.priceKD},${o.paymentMethod},${o.area},${o.preferredDate},${o.preferredTime},${o.loyaltyPointsEarned},${o.loyaltyPointsRedeemed},${o.discountApplied},${o.createdAt}`
+        )
+      ].join("\n");
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=orders.csv");
+      res.send(csv);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   return httpServer;
 }
