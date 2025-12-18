@@ -1,0 +1,139 @@
+أريد منك إعداد بنية احترافية لتتبع الطلبات والشحنات في مشروع غسلة ستايل باستخدام Cloud Firestore، مع دعم التتبع اللحظي (real‑time) وحساب النقاط تلقائيًا للعميل.
+
+1) إنشاء Collection رئيسية للطلبات
+
+أنشئ Collection باسم orders.
+
+كل Document داخل orders يمثل طلبًا واحدًا ويحتوي على الحقول التالية (استخدم أنواع مناسبة TypeScript إن وُجدت):
+
+orderCode: string
+
+كود طلب مختصر وواضح يظهر للعميل (مثل GS-1045).
+
+customerId: string
+
+يساوي auth.currentUser.uid من Firebase Auth، ويستخدم لجلب جميع طلبات العميل.
+
+status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled"
+
+حالة الطلب الحالية، تُستخدم في الفلاتر وعرض الـ Timeline.
+
+createdAt: Timestamp
+
+وقت إنشاء الطلب (serverTimestamp عند الإنشاء).
+
+updatedAt: Timestamp
+
+وقت آخر تحديث للحالة.
+
+serviceType: string
+
+نوع الخدمة (مثلاً: Exterior Wash, Full Wash...).
+
+vehicleInfo: { make: string; model: string; plateLast: string; color: string }
+
+بيانات أساسية عن السيارة: الماركة، الموديل، آخر أرقام اللوحة أو رمز مختصر، واللون.
+
+address: { area: string; block?: string; street?: string; notes?: string }
+
+عنوان الخدمة: المنطقة، مع حقول اختيارية للبلوك/الشارع، وحقل ملاحظات لشرح إضافي.
+
+totalPrice: number
+
+السعر النهائي بعد الخصومات، يُستخدم لحساب النقاط والتقارير.
+
+paymentMethod: string
+
+وسيلة الدفع (cash, knet, visa, apple_pay... إلخ).
+
+loyaltyPointsEarned: number
+
+عدد النقاط المكتسبة من هذا الطلب (يتم ملؤه تلقائيًا عند اكتمال الطلب).
+
+isPointsApplied: boolean
+
+فلاغ لمنع إضافة النقاط مرتين، يكون false عند إنشاء الطلب، ويتحول إلى true بعد احتساب النقاط.
+
+driverId: string | null
+
+معرّف السائق أو الفريق المسؤول عن تنفيذ الطلب (للتكامل مع تتبع الموقع لاحقًا).
+
+cancelReason: string | null
+
+سبب الإلغاء إن كانت الحالة cancelled.
+
+source: string
+
+مصدر الطلب (مثل: web_app, mobile_app, whatsapp, call_center).
+
+2) جلب جميع طلبات العميل + التحديث اللحظي
+
+أنشئ دوال/هوكس (مثلاً في React) لجلب كل طلبات العميل الحالي في صفحة Track Your Order باستخدام Query:
+
+where("customerId", "==", auth.currentUser.uid)
+
+orderBy("createdAt", "desc")
+
+استخدم onSnapshot بدلاً من get() حتى يتم تحديث قائمة الطلبات Realtime عند تغيير الحالة أو إضافة طلب جديد.
+
+هيّئ الواجهة بحيث:
+
+تعرض جميع طلبات العميل بترتيب تنازلي حسب createdAt.
+
+تدعم فلاتر حسب الحالة (All, Active, Completed, Cancelled) عبر فلترة النتائج في الكود أو Query إضافية.
+
+3) تحديد آخر طلب منتهي ووضع وسم “منتهي”
+
+إلى جانب القائمة العامة، أنشئ Query للحصول على آخر طلب مكتمل للعميل:
+
+where("customerId", "==", auth.currentUser.uid)
+
+where("status", "==", "completed")
+
+orderBy("updatedAt", "desc")
+
+limit(1)
+
+في واجهة Track Your Order:
+
+أضف Badge واضح على البطاقة الخاصة بهذا الطلب توضح أنه “آخر طلب منتهي”.
+
+لكل طلب حالته completed أظهر وسم “تم الانتهاء” بلون أخضر مثلاً، بينما الطلبات الأخرى تعرض الحالة الحالية.
+
+4) منطق احتساب النقاط التلقائي عند اكتمال الطلب
+
+أنشئ إما Cloud Function أو منطق واضح في لوحة الإدارة بحيث:
+
+عند تغيير حالة طلب من أي حالة إلى completed:
+
+لو isPointsApplied == false:
+
+احسب النقاط من totalPrice وفق معادلة قابلة للتعديل (مثال: نقطة لكل 1 وحدة عملة، أو أي Rule أخرى).
+
+حدِّث رصيد النقاط في وثيقة العميل داخل Collection users (حقل مثل loyaltyPoints).
+
+اكتب في وثيقة الطلب:
+
+loyaltyPointsEarned = pointsToAdd
+
+isPointsApplied = true
+
+updatedAt = serverTimestamp()
+
+تأكد من أن المنطق لا يعيد إضافة النقاط في حال إعادة حفظ نفس الحالة.
+
+5) دعم التتبع اللحظي في صفحة التفاصيل
+
+لصفحة تفاصيل طلب واحد، استخدم onSnapshot على Document orders/{orderId} أو على وثيقة يتم البحث عنها بـ orderCode.
+
+حدّث واجهة الـ Timeline / Progress Bar فورًا مع أي تغيير في حقل status أو updatedAt.
+
+6) التنظيف والتوثيق
+
+أضف Types/Interfaces في TypeScript لنموذج الطلب (Order) بحيث تتطابق مع الحقول المذكورة أعلاه.
+
+تأكد من أن جميع القراءات والكتابات تستخدم هذه الأنواع لتفادي الأخطاء.
+
+أضف تعليقات مختصرة في الكود توضح وظيفة كل حقل مهم (isPointsApplied, loyaltyPointsEarned, source، إلخ).
+
+لو وجدت أي تضارب مع البنية الحالية لقاعدة البيانات عندي، قم بتعديل الأسماء بشكل طفيف مع الحفاظ على نفس الفكرة، ثم اشرح ما تم تعديله في تعليق أعلى ملف الموديل.
