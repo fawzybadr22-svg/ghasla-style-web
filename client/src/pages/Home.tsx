@@ -681,7 +681,7 @@ export default function Home() {
                   {user && (
                     <motion.div variants={fadeIn} className="text-center pt-2">
                       <Link href="/track-order">
-                        <Button variant="link" className="text-primary" data-testid="link-view-all-orders">
+                        <Button variant="ghost" className="text-primary underline underline-offset-4" data-testid="link-view-all-orders">
                           {getLocalizedText("عرض جميع طلباتي", "View all my orders", "Voir toutes mes commandes")}
                         </Button>
                       </Link>
