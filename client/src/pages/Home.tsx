@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import heroImage from "@assets/generated_images/luxury_car_with_water_droplets.png";
 import fleetImage from "@assets/generated_images/branded_mobile_wash_van.png";
 import beforeAfterExterior from "@assets/generated_images/exterior_wash_before_after_comparison.png";
-import beforeAfterInterior from "@assets/generated_images/interior_cleaning_before_after_comparison.png";
+import beforeAfterInterior from "@assets/generated_images/car_interior_deep_clean_comparison.png";
 import beforeAfterDetailing from "@assets/generated_images/car_detailing_before_after_comparison.png";
 import serviceExteriorBg from "@assets/generated_images/premium_sedan_car_wash.png";
 import serviceInteriorBg from "@assets/generated_images/premium_car_interior_clean.png";
