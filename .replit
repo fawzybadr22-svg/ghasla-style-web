@@ -44,4 +44,3 @@ integrations = ["firebase_barebones_javascript:1.0.0"]
 [userenv]
 
 [userenv.shared]
-SUPER_ADMIN_SECRET = "Fawzy-Ghasla-Admin-2025!"
