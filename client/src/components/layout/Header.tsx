@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Menu, X, Moon, Sun, User, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/Logo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,11 +46,8 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-              <span className="text-lg font-bold text-primary-foreground">G</span>
-            </div>
-            <span className="text-xl font-bold text-foreground">{t("brand")}</span>
+          <Link href="/" className="flex items-center" data-testid="logo-link">
+            <Logo size="md" />
           </Link>
 
           <nav className="hidden lg:flex items-center gap-1">
