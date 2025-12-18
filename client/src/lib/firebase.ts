@@ -16,15 +16,13 @@ import {
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Your web app's Firebase configuration - DO NOT modify these values
+// Firebase configuration using environment variables for security
 const firebaseConfig = {
-  apiKey: "AIzaSyBBDE1w48o4Z9v5AK-LHv_mLUWA12XHkGo",
-  authDomain: "ghasla-style.firebaseapp.com",
-  projectId: "ghasla-style",
-  storageBucket: "ghasla-style.firebasestorage.app",
-  messagingSenderId: "7570975896156",
-  appId: "1:7570975896156:web:a0a6e074e50a2e8eebfd99",
-  measurementId: "G-1C1ZRQGS1W"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.app`,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 // Initialize Firebase only if not already initialized (prevents duplicate-app error during hot reload)
