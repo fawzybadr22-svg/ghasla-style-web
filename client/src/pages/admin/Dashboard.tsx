@@ -24,7 +24,7 @@ export default function AdminDashboard() {
   const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/admin/:section");
-  const { user, isAdmin, isSuperAdmin, loading } = useAuth();
+  const { user, firebaseUser, isAdmin, isSuperAdmin, loading } = useAuth();
   const { toast } = useToast();
   
   const section = params?.section || "dashboard";
@@ -519,20 +519,11 @@ export default function AdminDashboard() {
             )}
 
             {section === "admins" && isSuperAdmin && (
-              <div className="space-y-6">
-                <h1 className="text-2xl font-bold">{t("admin.admins")}</h1>
-                <Card>
-                  <CardContent className="pt-6">
-                    <p className="text-muted-foreground text-center py-8">
-                      {getLocalizedText(
-                        "إدارة حسابات المشرفين - قريباً",
-                        "Manage admin accounts - Coming soon",
-                        "Gérer les comptes administrateurs - Bientôt"
-                      )}
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
+              <AdminManagement 
+                userId={user?.id || ""} 
+                firebaseUser={firebaseUser}
+                getLocalizedText={getLocalizedText} 
+              />
             )}
 
             {section === "audit" && isSuperAdmin && (
@@ -736,5 +727,399 @@ function LoyaltyConfigEditor({
         </Button>
       </CardContent>
     </Card>
+  );
+}
+
+// Admin Management Component (Super Admin only)
+function AdminManagement({
+  userId,
+  firebaseUser,
+  getLocalizedText,
+}: {
+  userId: string;
+  firebaseUser: any;
+  getLocalizedText: (ar: string, en: string, fr: string) => string;
+}) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingAdmin, setEditingAdmin] = useState<User | null>(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: "admin",
+    password: "",
+  });
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    if (!firebaseUser) {
+      throw new Error("Not authenticated");
+    }
+    const token = await firebaseUser.getIdToken();
+    return { Authorization: `Bearer ${token}` };
+  };
+
+  const { data: admins, isLoading, error: adminsError } = useQuery<User[]>({
+    queryKey: ["/api/admin/admins"],
+    queryFn: async () => {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/admin/admins", { headers });
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          throw new Error("Authentication required. Please sign in again.");
+        }
+        throw new Error("Failed to fetch admins");
+      }
+      return res.json();
+    },
+    enabled: !!firebaseUser,
+  });
+
+  const createAdminMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/admin/admins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to create admin");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/admins"] });
+      toast({ title: getLocalizedText("تم إنشاء المشرف", "Admin created", "Administrateur créé") });
+      setShowAddForm(false);
+      resetForm();
+    },
+    onError: (error: Error) => {
+      toast({ title: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateAdminMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<User> }) => {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/admin/admins/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to update admin");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/admins"] });
+      toast({ title: getLocalizedText("تم تحديث المشرف", "Admin updated", "Administrateur mis à jour") });
+      setEditingAdmin(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteAdminMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/admin/admins/${id}`, {
+        method: "DELETE",
+        headers,
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to deactivate admin");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/admins"] });
+      toast({ title: getLocalizedText("تم إلغاء تفعيل المشرف", "Admin deactivated", "Administrateur désactivé") });
+    },
+    onError: (error: Error) => {
+      toast({ title: error.message, variant: "destructive" });
+    },
+  });
+
+  const resetForm = () => {
+    setFormData({ name: "", email: "", phone: "", role: "admin", password: "" });
+  };
+
+  const handleSubmit = () => {
+    if (!formData.name || !formData.email) {
+      toast({ title: getLocalizedText("الاسم والإيميل مطلوبان", "Name and email are required", "Nom et email requis"), variant: "destructive" });
+      return;
+    }
+    createAdminMutation.mutate(formData);
+  };
+
+  const handleUpdate = () => {
+    if (!editingAdmin) return;
+    updateAdminMutation.mutate({
+      id: editingAdmin.id,
+      data: {
+        name: formData.name,
+        phone: formData.phone,
+        role: formData.role as "admin" | "super_admin" | "customer",
+        status: editingAdmin.status,
+      },
+    });
+  };
+
+  const getRoleBadge = (role: string) => {
+    const colors: Record<string, string> = {
+      super_admin: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+      admin: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+      customer: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
+    };
+    const labels: Record<string, string> = {
+      super_admin: getLocalizedText("سوبر أدمن", "Super Admin", "Super Admin"),
+      admin: getLocalizedText("مشرف", "Admin", "Admin"),
+      customer: getLocalizedText("عميل", "Customer", "Client"),
+    };
+    return <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[role] || colors.customer}`}>{labels[role] || role}</span>;
+  };
+
+  if (!firebaseUser) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">{t("admin.admins")}</h1>
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="text-muted-foreground">
+              {getLocalizedText("جارٍ التحميل...", "Loading...", "Chargement...")}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (adminsError) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">{t("admin.admins")}</h1>
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p className="text-destructive">
+              {getLocalizedText("فشل تحميل المشرفين", "Failed to load admins", "Échec du chargement")}
+            </p>
+            <p className="text-muted-foreground text-sm mt-2">
+              {(adminsError as Error).message}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <h1 className="text-2xl font-bold">{t("admin.admins")}</h1>
+        <Button onClick={() => { setShowAddForm(true); setEditingAdmin(null); resetForm(); }} data-testid="add-admin-btn">
+          <Plus className="h-4 w-4 me-2" />
+          {getLocalizedText("إضافة مشرف", "Add Admin", "Ajouter Admin")}
+        </Button>
+      </div>
+
+      {(showAddForm || editingAdmin) && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle>
+              {editingAdmin 
+                ? getLocalizedText("تعديل المشرف", "Edit Admin", "Modifier Admin")
+                : getLocalizedText("إضافة مشرف جديد", "Add New Admin", "Ajouter Nouvel Admin")
+              }
+            </CardTitle>
+            <Button size="icon" variant="ghost" onClick={() => { setShowAddForm(false); setEditingAdmin(null); resetForm(); }}>
+              <X className="h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{getLocalizedText("الاسم الكامل", "Full Name", "Nom Complet")} *</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder={getLocalizedText("أدخل الاسم", "Enter name", "Entrez le nom")}
+                  data-testid="input-admin-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{getLocalizedText("البريد الإلكتروني", "Email", "Email")} *</Label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="admin@example.com"
+                  disabled={!!editingAdmin}
+                  data-testid="input-admin-email"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{getLocalizedText("رقم الهاتف", "Phone", "Téléphone")}</Label>
+                <Input
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="+965 XXXX XXXX"
+                  data-testid="input-admin-phone"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{getLocalizedText("الدور", "Role", "Rôle")}</Label>
+                <Select
+                  value={formData.role}
+                  onValueChange={(value) => setFormData({ ...formData, role: value })}
+                >
+                  <SelectTrigger data-testid="select-admin-role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">{getLocalizedText("مشرف", "Admin", "Admin")}</SelectItem>
+                    <SelectItem value="super_admin">{getLocalizedText("سوبر أدمن", "Super Admin", "Super Admin")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {!editingAdmin && (
+                <div className="space-y-2 md:col-span-2">
+                  <Label>{getLocalizedText("كلمة المرور الابتدائية", "Initial Password", "Mot de passe initial")}</Label>
+                  <Input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder={getLocalizedText("اتركه فارغاً لتوليد كلمة مرور تلقائية", "Leave empty for auto-generated password", "Laisser vide pour mot de passe auto-généré")}
+                    data-testid="input-admin-password"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={editingAdmin ? handleUpdate : handleSubmit} 
+                disabled={createAdminMutation.isPending || updateAdminMutation.isPending}
+                data-testid="btn-save-admin"
+              >
+                <Save className="h-4 w-4 me-2" />
+                {(createAdminMutation.isPending || updateAdminMutation.isPending) 
+                  ? getLocalizedText("جاري الحفظ...", "Saving...", "Enregistrement...")
+                  : getLocalizedText("حفظ", "Save", "Enregistrer")
+                }
+              </Button>
+              <Button variant="outline" onClick={() => { setShowAddForm(false); setEditingAdmin(null); resetForm(); }}>
+                {getLocalizedText("إلغاء", "Cancel", "Annuler")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{getLocalizedText("قائمة المشرفين", "Admins List", "Liste des Administrateurs")}</CardTitle>
+          <CardDescription>
+            {getLocalizedText(
+              "إدارة جميع حسابات المشرفين في النظام",
+              "Manage all admin accounts in the system",
+              "Gérer tous les comptes administrateurs"
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}
+            </div>
+          ) : admins?.length ? (
+            <div className="space-y-3">
+              {admins.map((admin) => (
+                <div 
+                  key={admin.id} 
+                  className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-lg border gap-4"
+                  data-testid={`admin-row-${admin.id}`}
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-medium">{admin.name}</span>
+                      {getRoleBadge(admin.role)}
+                      <Badge variant={admin.status === "active" ? "default" : "destructive"} className="text-xs">
+                        {admin.status === "active" 
+                          ? getLocalizedText("نشط", "Active", "Actif")
+                          : getLocalizedText("محظور", "Blocked", "Bloqué")
+                        }
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{admin.email}</p>
+                    {admin.phone && <p className="text-sm text-muted-foreground">{admin.phone}</p>}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {getLocalizedText("تاريخ الإنشاء:", "Created:", "Créé le:")} {new Date(admin.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {admin.id !== userId && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingAdmin(admin);
+                            setFormData({
+                              name: admin.name,
+                              email: admin.email,
+                              phone: admin.phone || "",
+                              role: admin.role,
+                              password: "",
+                            });
+                            setShowAddForm(false);
+                          }}
+                          data-testid={`edit-admin-${admin.id}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={admin.status === "active" ? "destructive" : "default"}
+                          onClick={() => {
+                            if (admin.status === "active") {
+                              if (confirm(getLocalizedText(
+                                "هل أنت متأكد من إلغاء تفعيل هذا المشرف؟",
+                                "Are you sure you want to deactivate this admin?",
+                                "Êtes-vous sûr de vouloir désactiver cet administrateur?"
+                              ))) {
+                                deleteAdminMutation.mutate(admin.id);
+                              }
+                            } else {
+                              updateAdminMutation.mutate({
+                                id: admin.id,
+                                data: { status: "active" },
+                              });
+                            }
+                          }}
+                          data-testid={`toggle-admin-${admin.id}`}
+                        >
+                          {admin.status === "active" ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                        </Button>
+                      </>
+                    )}
+                    {admin.id === userId && (
+                      <Badge variant="outline">{getLocalizedText("أنت", "You", "Vous")}</Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-8">{t("common.noData")}</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

@@ -1136,5 +1136,260 @@ export async function registerRoutes(
     }
   });
 
+  // ====================
+  // SUPER ADMIN ROUTES - Admin Management (Protected)
+  // ====================
+
+  // Get all admins (superAdmin only)
+  app.get("/api/admin/admins", requireSuperAdmin, async (req: any, res) => {
+    try {
+      const admins = await storage.getUsers({ role: "admin" });
+      const superAdmins = await storage.getUsers({ role: "super_admin" });
+      const allAdmins = [...superAdmins, ...admins].map(({ twoFactorSecret, ...u }) => u);
+      res.json(allAdmins);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create new admin (superAdmin only)
+  app.post("/api/admin/admins", requireSuperAdmin, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { email, name, phone, role, password } = req.body;
+      
+      // Use authenticated user from middleware
+      const authenticatedUserId = req.user?.uid;
+      if (!authenticatedUserId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      if (!email || !name) {
+        return res.status(400).json({ error: "Email and name are required" });
+      }
+
+      const validRoles = ["admin", "super_admin"];
+      const adminRole = validRoles.includes(role) ? role : "admin";
+
+      // Check if user exists in database
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ error: "User with this email already exists" });
+      }
+
+      // Create user in Firebase Auth
+      const { getFirebaseAdmin } = await import("./firebase-admin");
+      const firebaseAdmin = getFirebaseAdmin();
+      
+      let firebaseUser;
+      try {
+        firebaseUser = await firebaseAdmin.auth().getUserByEmail(email);
+      } catch (e: any) {
+        if (e.code === "auth/user-not-found") {
+          firebaseUser = await firebaseAdmin.auth().createUser({
+            email,
+            password: password || `${email.split("@")[0]}@Temp123!`,
+            displayName: name,
+          });
+        } else {
+          throw e;
+        }
+      }
+
+      // Set custom claims
+      await firebaseAdmin.auth().setCustomUserClaims(firebaseUser.uid, {
+        admin: true,
+        superAdmin: adminRole === "super_admin",
+      });
+
+      // Create user in database
+      const user = await storage.createUser({
+        id: firebaseUser.uid,
+        email,
+        name,
+        phone: phone || null,
+        role: adminRole,
+        status: "active",
+      });
+
+      // Audit log with verified authenticated user
+      await storage.createAuditLog({
+        actionType: "create_admin",
+        performedBy: authenticatedUserId,
+        targetCollection: "users",
+        targetId: user.id,
+        newValue: JSON.stringify({ email, name, role: adminRole }),
+      });
+
+      const { twoFactorSecret, ...safeUser } = user;
+      res.status(201).json(safeUser);
+    } catch (error: any) {
+      console.error("Create admin error:", error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Update admin (superAdmin only)
+  app.patch("/api/admin/admins/:id", requireSuperAdmin, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { name, phone, role, status } = req.body;
+      
+      // Use authenticated user from middleware
+      const authenticatedUserId = req.user?.uid;
+      if (!authenticatedUserId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: "Admin not found" });
+      }
+
+      const updateData: any = {};
+      if (name) updateData.name = name;
+      if (phone !== undefined) updateData.phone = phone;
+      if (status && ["active", "blocked"].includes(status)) updateData.status = status;
+      
+      // Handle role change with transactional safety
+      if (role && ["admin", "super_admin", "customer"].includes(role)) {
+        // Prevent demoting last super admin
+        if (user.role === "super_admin" && role !== "super_admin") {
+          const superAdmins = await storage.getUsers({ role: "super_admin" });
+          const activeSuperAdmins = superAdmins.filter(u => u.status === "active");
+          if (activeSuperAdmins.length <= 1) {
+            return res.status(400).json({ error: "Cannot demote the last super admin" });
+          }
+        }
+        
+        // Update Firebase custom claims FIRST before storage
+        const { getFirebaseAdmin } = await import("./firebase-admin");
+        const firebaseAdmin = getFirebaseAdmin();
+        try {
+          await firebaseAdmin.auth().setCustomUserClaims(req.params.id, {
+            admin: role !== "customer",
+            superAdmin: role === "super_admin",
+          });
+          
+          // Revoke refresh tokens to force claim refresh on next auth
+          await firebaseAdmin.auth().revokeRefreshTokens(req.params.id);
+        } catch (claimError: any) {
+          console.error("Firebase claim update failed:", claimError);
+          return res.status(500).json({ error: "Failed to update user permissions in authentication system" });
+        }
+        
+        updateData.role = role;
+      }
+
+      const updated = await storage.updateUser(req.params.id, updateData);
+
+      // Post-mutation verification: ensure at least one active super admin exists
+      const postUpdateSuperAdmins = await storage.getUsers({ role: "super_admin" });
+      const activePostUpdate = postUpdateSuperAdmins.filter(u => u.status === "active");
+      if (activePostUpdate.length === 0) {
+        // Rollback: restore original role
+        await storage.updateUser(req.params.id, { role: user.role });
+        const { getFirebaseAdmin } = await import("./firebase-admin");
+        const firebaseAdmin = getFirebaseAdmin();
+        await firebaseAdmin.auth().setCustomUserClaims(req.params.id, {
+          admin: user.role !== "customer",
+          superAdmin: user.role === "super_admin",
+        });
+        return res.status(400).json({ error: "Operation would remove all super admins. Rolled back." });
+      }
+
+      // Audit log with verified authenticated user
+      await storage.createAuditLog({
+        actionType: "update_admin",
+        performedBy: authenticatedUserId,
+        targetCollection: "users",
+        targetId: req.params.id,
+        oldValue: JSON.stringify({ name: user.name, role: user.role, status: user.status }),
+        newValue: JSON.stringify(updateData),
+      });
+
+      const { twoFactorSecret, ...safeUser } = updated!;
+      res.json(safeUser);
+    } catch (error: any) {
+      console.error("Update admin error:", error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Deactivate admin (soft delete - superAdmin only)
+  app.delete("/api/admin/admins/:id", requireSuperAdmin, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Use authenticated user from middleware
+      const authenticatedUserId = req.user?.uid;
+      if (!authenticatedUserId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: "Admin not found" });
+      }
+
+      // Don't allow deleting yourself
+      if (authenticatedUserId === req.params.id) {
+        return res.status(400).json({ error: "Cannot deactivate your own account" });
+      }
+
+      // Prevent deactivating last super admin
+      if (user.role === "super_admin") {
+        const superAdmins = await storage.getUsers({ role: "super_admin" });
+        const activeSuperAdmins = superAdmins.filter(u => u.status === "active");
+        if (activeSuperAdmins.length <= 1) {
+          return res.status(400).json({ error: "Cannot deactivate the last super admin" });
+        }
+      }
+
+      // Remove Firebase admin claims FIRST with transactional safety
+      const { getFirebaseAdmin } = await import("./firebase-admin");
+      const firebaseAdmin = getFirebaseAdmin();
+      try {
+        await firebaseAdmin.auth().setCustomUserClaims(req.params.id, {
+          admin: false,
+          superAdmin: false,
+        });
+        
+        // Revoke refresh tokens to force claim refresh
+        await firebaseAdmin.auth().revokeRefreshTokens(req.params.id);
+      } catch (claimError: any) {
+        console.error("Firebase claim removal failed:", claimError);
+        return res.status(500).json({ error: "Failed to revoke user permissions in authentication system" });
+      }
+
+      // Soft delete - set status to blocked and role to customer
+      await storage.updateUser(req.params.id, { status: "blocked", role: "customer" });
+
+      // Post-mutation verification: ensure at least one active super admin exists
+      const postUpdateSuperAdmins = await storage.getUsers({ role: "super_admin" });
+      const activePostUpdate = postUpdateSuperAdmins.filter(u => u.status === "active");
+      if (activePostUpdate.length === 0) {
+        // Rollback: restore original role and status
+        await storage.updateUser(req.params.id, { role: user.role, status: user.status });
+        await firebaseAdmin.auth().setCustomUserClaims(req.params.id, {
+          admin: user.role !== "customer",
+          superAdmin: user.role === "super_admin",
+        });
+        return res.status(400).json({ error: "Operation would remove all super admins. Rolled back." });
+      }
+
+      // Audit log with verified authenticated user
+      await storage.createAuditLog({
+        actionType: "deactivate_admin",
+        performedBy: authenticatedUserId,
+        targetCollection: "users",
+        targetId: req.params.id,
+        oldValue: JSON.stringify({ role: user.role, status: user.status }),
+        newValue: JSON.stringify({ role: "customer", status: "blocked" }),
+      });
+
+      res.json({ success: true, message: "Admin deactivated" });
+    } catch (error: any) {
+      console.error("Delete admin error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }
