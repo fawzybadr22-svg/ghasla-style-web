@@ -190,6 +190,97 @@ export async function registerRoutes(
   });
 
   // ====================
+  // AUTHENTICATION ROUTES
+  // ====================
+
+  // Register with email (creates user in database after Firebase auth)
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { uid, email, name, phone, referralCode } = req.body;
+      
+      if (!uid || !email) {
+        return res.status(400).json({ error: "User ID and email are required" });
+      }
+
+      // Check if user already exists
+      const existing = await storage.getUser(uid);
+      if (existing) {
+        const { twoFactorSecret, ...safeUser } = existing;
+        return res.json(safeUser);
+      }
+
+      // Check if referred by someone
+      let referredBy: string | undefined;
+      if (referralCode) {
+        const referrer = await storage.getUserByReferralCode(referralCode);
+        if (referrer) {
+          referredBy = referrer.id;
+        }
+      }
+
+      // Create user
+      const user = await storage.createUser({
+        id: uid,
+        email,
+        name: name || email.split("@")[0],
+        phone,
+        referredBy,
+        role: "customer",
+        status: "active",
+      });
+
+      // Create referral record if referred
+      if (referredBy) {
+        await storage.createReferral({
+          referrerId: referredBy,
+          referredCustomerId: uid,
+          status: "pending",
+        });
+      }
+
+      const { twoFactorSecret, ...safeUser } = user;
+      res.status(201).json(safeUser);
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Login/Register with Google (creates or returns existing user)
+  app.post("/api/auth/google", async (req, res) => {
+    try {
+      const { uid, email, name, phone } = req.body;
+      
+      if (!uid || !email) {
+        return res.status(400).json({ error: "User ID and email are required" });
+      }
+
+      // Check if user already exists
+      const existing = await storage.getUser(uid);
+      if (existing) {
+        const { twoFactorSecret, ...safeUser } = existing;
+        return res.json(safeUser);
+      }
+
+      // Create new user for Google login
+      const user = await storage.createUser({
+        id: uid,
+        email,
+        name: name || email.split("@")[0],
+        phone,
+        role: "customer",
+        status: "active",
+      });
+
+      const { twoFactorSecret, ...safeUser } = user;
+      res.status(201).json(safeUser);
+    } catch (error: any) {
+      console.error("Google auth error:", error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // ====================
   // USER ROUTES (requires authentication)
   // ====================
 
