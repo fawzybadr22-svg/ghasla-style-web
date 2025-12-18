@@ -11,28 +11,33 @@ export function initializeFirebaseAdmin() {
     const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
     
     if (!projectId) {
-      console.warn("Firebase Admin: Missing project ID, some features may not work");
+      console.warn("Firebase Admin: Missing VITE_FIREBASE_PROJECT_ID");
+      return;
+    }
+
+    if (!serviceAccountJson) {
+      console.warn("Firebase Admin: Missing FIREBASE_SERVICE_ACCOUNT secret");
+      console.warn("Admin features (custom claims, super admin setup) will not work.");
+      console.warn("To fix: Add FIREBASE_SERVICE_ACCOUNT secret with your service account JSON");
       return;
     }
 
     if (admin.apps.length === 0) {
-      const config: admin.AppOptions = { projectId };
-      
-      if (serviceAccountJson) {
-        try {
-          const serviceAccount = JSON.parse(serviceAccountJson);
-          config.credential = admin.credential.cert(serviceAccount);
-          console.log("Firebase Admin: Using service account credentials");
-        } catch (parseError) {
-          console.warn("Firebase Admin: Could not parse service account JSON, using default");
-        }
+      try {
+        const serviceAccount = JSON.parse(serviceAccountJson);
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+          projectId,
+        });
+        console.log("Firebase Admin initialized with project:", projectId);
+        initialized = true;
+      } catch (parseError) {
+        console.error("Firebase Admin: Could not parse service account JSON:", parseError);
+        console.warn("Make sure FIREBASE_SERVICE_ACCOUNT contains valid JSON");
       }
-      
-      admin.initializeApp(config);
-      console.log("Firebase Admin initialized with project:", projectId);
+    } else {
+      initialized = true;
     }
-    
-    initialized = true;
   } catch (error) {
     console.error("Firebase Admin initialization error:", error);
   }
