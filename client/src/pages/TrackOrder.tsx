@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Car, MapPin, Clock, Calendar, Package, Check, ChevronRight, 
-  Filter, ArrowLeft, Truck, CircleDot, CheckCircle, XCircle
+  Filter, ArrowLeft, Truck, CircleDot, CheckCircle, XCircle, RefreshCw, FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,11 +46,18 @@ export default function TrackOrder() {
     }
   }, [user, navigate]);
 
-  // Fetch customer orders
-  const { data: orders = [], isLoading } = useQuery<OrderWithService[]>({
+  // Fetch customer orders with auto-refresh for real-time updates
+  const { data: orders = [], isLoading, refetch } = useQuery<OrderWithService[]>({
     queryKey: ["/api/orders/customer", user?.id],
     enabled: !!user?.id,
+    refetchInterval: 30000, // Auto-refresh every 30 seconds for real-time updates
+    refetchOnWindowFocus: true,
   });
+
+  // Manual refresh function
+  const handleRefresh = () => {
+    refetch();
+  };
 
   // Fetch service packages to get names
   const { data: packages = [] } = useQuery<Array<{
@@ -130,13 +137,13 @@ export default function TrackOrder() {
             </Button>
           </Link>
           <h1 className="text-3xl md:text-4xl font-bold mb-2">
-            {getLocalizedText("تتبع طلباتي", "Track My Orders", "Suivre Mes Commandes")}
+            Track Your Orders
           </h1>
           <p className="text-muted-foreground">
             {getLocalizedText(
-              "تابع حالة جميع طلباتك في مكان واحد",
-              "Track the status of all your orders in one place",
-              "Suivez l'état de toutes vos commandes en un seul endroit"
+              "تابع حالة طلبات غسلتك الحالية والسابقة في مكان واحد",
+              "Track the status of your current and previous wash orders in one place",
+              "Suivez l'état de vos commandes de lavage actuelles et passées en un seul endroit"
             )}
           </p>
         </div>
@@ -146,11 +153,11 @@ export default function TrackOrder() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Orders List */}
           <div className="lg:col-span-1 space-y-4">
-            {/* Filter */}
-            <div className="flex items-center gap-3">
-              <Filter className="h-4 w-4 text-muted-foreground" />
+            {/* Filter and Refresh */}
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full" data-testid="select-status-filter">
+                <SelectTrigger className="flex-1" data-testid="select-status-filter">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -160,6 +167,15 @@ export default function TrackOrder() {
                   <SelectItem value="cancelled">{getLocalizedText("ملغية", "Cancelled", "Annulées")}</SelectItem>
                 </SelectContent>
               </Select>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={handleRefresh}
+                title={getLocalizedText("تحديث", "Refresh", "Actualiser")}
+                data-testid="button-refresh-orders"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
             </div>
 
             {/* Orders */}
@@ -212,8 +228,14 @@ export default function TrackOrder() {
                                 ? getLocalizedText(order.serviceName.ar, order.serviceName.en, order.serviceName.fr)
                                 : "Service"}
                             </p>
-                            <p className="text-xs text-muted-foreground">
-                              #{order.id.slice(0, 8)}
+                            <p className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                              <span>#{order.id.slice(0, 8)}</span>
+                              {order.carDetails && (
+                                <span className="flex items-center gap-1">
+                                  <FileText className="h-3 w-3" />
+                                  {order.carDetails}
+                                </span>
+                              )}
                             </p>
                           </div>
                           <Badge variant={getStatusVariant(order.status)} className="shrink-0">
