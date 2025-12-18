@@ -198,33 +198,49 @@ export default function Booking() {
         body: JSON.stringify({
           customerId: user.id,
           carType: formData.carType,
-          carDetails: formData.carDetails,
+          carDetails: formData.carDetails || null,
           servicePackageId: formData.packageId,
           address: formData.address,
           area: formData.area,
           preferredDate: formData.date,
           preferredTime: formData.time,
           paymentMethod: formData.paymentMethod,
-          priceKD: 0,
+          priceKD: finalPrice,
           loyaltyPointsRedeemed: formData.pointsToRedeem,
-          status: "pending",
         }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        const order = await response.json();
         toast({
           title: t("booking.success"),
-          description: `${t("booking.orderNumber")}: ${order.id}`,
+          description: `${t("booking.orderNumber")}: ${data.id}`,
         });
+        setFormData({
+          carType: "sedan",
+          carDetails: "",
+          packageId: "",
+          address: "",
+          area: "",
+          date: "",
+          time: "",
+          paymentMethod: "cash",
+          pointsToRedeem: 0,
+        });
+        setStep(1);
         setLocation("/account");
       } else {
-        throw new Error("Failed to create order");
+        toast({
+          title: t("common.error"),
+          description: data.error || getLocalizedText("فشل إنشاء الحجز", "Failed to create booking", "Échec de la création de la réservation"),
+          variant: "destructive",
+        });
       }
     } catch (error) {
       toast({
         title: t("common.error"),
-        description: getLocalizedText("حاول مرة أخرى", "Please try again", "Veuillez réessayer"),
+        description: getLocalizedText("حدث خطأ في الاتصال. حاول مرة أخرى", "Connection error. Please try again", "Erreur de connexion. Veuillez réessayer"),
         variant: "destructive",
       });
     } finally {

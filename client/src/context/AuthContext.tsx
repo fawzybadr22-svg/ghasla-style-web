@@ -72,8 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithEmail = async (email: string, password: string) => {
     try {
       await signInWithEmail(email, password);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Email login error:", error);
+      if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password" || error.code === "auth/user-not-found") {
+        throw new Error("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+      }
       throw error;
     }
   };
@@ -102,8 +105,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userData = await response.json();
         setUser(userData);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Registration error:", error);
+      if (error.code === "auth/email-already-in-use") {
+        throw new Error("البريد الإلكتروني مسجل مسبقاً. يرجى استخدام تسجيل الدخول بدلاً من إنشاء حساب جديد.");
+      }
+      if (error.code === "auth/weak-password") {
+        throw new Error("كلمة المرور ضعيفة. يجب أن تكون 6 أحرف على الأقل.");
+      }
+      if (error.code === "auth/invalid-email") {
+        throw new Error("البريد الإلكتروني غير صالح.");
+      }
       throw error;
     }
   };

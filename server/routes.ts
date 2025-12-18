@@ -412,7 +412,7 @@ export async function registerRoutes(
       }
 
       // Get service package for display name
-      const servicePackage = await storage.getPackage(order.servicePackageId);
+      const servicePackage = await storage.getServicePackage(order.servicePackageId);
 
       // Return only non-sensitive public info
       res.json({
@@ -449,6 +449,8 @@ export async function registerRoutes(
   // Create order
   app.post("/api/orders", async (req, res) => {
     try {
+      console.log("POST /api/orders - Request body:", JSON.stringify(req.body, null, 2));
+      
       const orderData = insertOrderSchema.parse(req.body);
       
       // Get customer for loyalty calculations
@@ -461,7 +463,7 @@ export async function registerRoutes(
       }
 
       // Get service package to calculate proper price server-side
-      const servicePackage = await storage.getPackage(orderData.servicePackageId);
+      const servicePackage = await storage.getServicePackage(orderData.servicePackageId);
       if (!servicePackage) {
         return res.status(400).json({ error: "Invalid service package" });
       }
@@ -514,6 +516,8 @@ export async function registerRoutes(
 
       res.status(201).json(order);
     } catch (error: any) {
+      console.error("POST /api/orders - Error:", error.message);
+      console.error("Request body was:", JSON.stringify(req.body, null, 2));
       res.status(400).json({ error: error.message });
     }
   });
