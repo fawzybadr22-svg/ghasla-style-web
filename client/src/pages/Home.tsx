@@ -15,9 +15,9 @@ import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import heroImage from "@assets/generated_images/luxury_car_with_water_droplets.png";
 import fleetImage from "@assets/generated_images/branded_mobile_wash_van.png";
-import beforeAfterExterior from "@assets/generated_images/exterior_wash_before_after.png";
-import beforeAfterInterior from "@assets/generated_images/interior_cleaning_before_after.png";
-import beforeAfterDetailing from "@assets/generated_images/full_detailing_before_after.png";
+import beforeAfterExterior from "@assets/generated_images/exterior_wash_before_after_comparison.png";
+import beforeAfterInterior from "@assets/generated_images/interior_cleaning_before_after_comparison.png";
+import beforeAfterDetailing from "@assets/generated_images/car_detailing_before_after_comparison.png";
 import serviceExteriorBg from "@assets/generated_images/premium_sedan_car_wash.png";
 import serviceInteriorBg from "@assets/generated_images/premium_car_interior_clean.png";
 import serviceVipBg from "@assets/generated_images/luxury_suv_detailing_studio.png";
@@ -223,23 +223,41 @@ export default function Home() {
     {
       id: 1,
       image: beforeAfterDetailing,
+      titleAr: "تفصيل كامل",
       titleEn: "Full Detailing",
+      titleFr: "Détaillage Complet",
+      ctaAr: "حوّل الطلاء الباهت إلى لمعان مرآة كصالة العرض.",
       ctaEn: "Turn dull paint into a mirror-finish showroom shine.",
-      whatsappMessage: "Hi, I'd like to book a Full Detailing service.",
+      ctaFr: "Transformez une peinture terne en une brillance de showroom.",
+      whatsappMessageAr: "مرحباً، أريد حجز خدمة التفصيل الكامل.",
+      whatsappMessageEn: "Hi, I'd like to book a Full Detailing service.",
+      whatsappMessageFr: "Bonjour, je voudrais réserver un service de détaillage complet.",
     },
     {
       id: 2,
       image: beforeAfterInterior,
+      titleAr: "تنظيف داخلي عميق",
       titleEn: "Interior Deep Clean",
+      titleFr: "Nettoyage Intérieur Profond",
+      ctaAr: "استنشق هواءً نقياً في مقصورة نظيفة كل رحلة.",
       ctaEn: "Breathe in a fresh, spotless cabin - every trip.",
-      whatsappMessage: "Hi, I'd like to book an Interior Deep Clean.",
+      ctaFr: "Respirez un air frais dans un habitacle impeccable.",
+      whatsappMessageAr: "مرحباً، أريد حجز خدمة التنظيف الداخلي العميق.",
+      whatsappMessageEn: "Hi, I'd like to book an Interior Deep Clean.",
+      whatsappMessageFr: "Bonjour, je voudrais réserver un nettoyage intérieur profond.",
     },
     {
       id: 3,
       image: beforeAfterExterior,
+      titleAr: "غسيل خارجي",
       titleEn: "Exterior Wash",
+      titleFr: "Lavage Extérieur",
+      ctaAr: "أزل أوساخ أسابيع في غسلة واحدة فاخرة.",
       ctaEn: "Remove weeks of dirt in just one premium wash.",
-      whatsappMessage: "Hi, I'd like to book an Exterior Wash.",
+      ctaFr: "Enlevez des semaines de saleté en un seul lavage premium.",
+      whatsappMessageAr: "مرحباً، أريد حجز خدمة الغسيل الخارجي.",
+      whatsappMessageEn: "Hi, I'd like to book an Exterior Wash.",
+      whatsappMessageFr: "Bonjour, je voudrais réserver un lavage extérieur.",
     },
   ];
 
@@ -881,10 +899,14 @@ export default function Home() {
             className="text-center mb-12"
           >
             <motion.h2 variants={fadeInUp} className="text-3xl md:text-4xl font-bold mb-4">
-              Before & After Results
+              {getLocalizedText("نتائج قبل وبعد", "Before & After Results", "Résultats Avant & Après")}
             </motion.h2>
             <motion.p variants={fadeInUp} className="text-lg text-white/70 max-w-2xl mx-auto">
-              See the difference we make - real results from our happy customers
+              {getLocalizedText(
+                "شاهد الفرق الذي نصنعه - نتائج حقيقية من عملائنا السعداء",
+                "See the difference we make - real results from our happy customers",
+                "Voyez la différence que nous faisons - résultats réels de nos clients satisfaits"
+              )}
             </motion.p>
           </motion.div>
 
@@ -939,7 +961,7 @@ export default function Home() {
                       className="absolute top-3 left-3 z-10"
                     >
                       <Badge className="bg-gray-600/90 text-white shadow-lg backdrop-blur-sm px-3 py-1">
-                        Before
+                        {getLocalizedText("قبل", "Before", "Avant")}
                       </Badge>
                     </motion.div>
                     <motion.div 
@@ -949,19 +971,19 @@ export default function Home() {
                       className="absolute top-3 right-3 z-10"
                     >
                       <Badge className="bg-primary text-primary-foreground shadow-lg backdrop-blur-sm px-3 py-1">
-                        After
+                        {getLocalizedText("بعد", "After", "Après")}
                       </Badge>
                     </motion.div>
                   </div>
                   <div className="p-5 text-center space-y-3">
                     <h3 className="text-xl font-bold">
-                      {comparison.titleEn}
+                      {getLocalizedText(comparison.titleAr, comparison.titleEn, comparison.titleFr)}
                     </h3>
                     <p className="text-sm text-white/70 leading-relaxed">
-                      {comparison.ctaEn}
+                      {getLocalizedText(comparison.ctaAr, comparison.ctaEn, comparison.ctaFr)}
                     </p>
                     <a
-                      href={`https://wa.me/96596068518?text=${encodeURIComponent(comparison.whatsappMessage)}`}
+                      href={`https://wa.me/96596068518?text=${encodeURIComponent(getLocalizedText(comparison.whatsappMessageAr, comparison.whatsappMessageEn, comparison.whatsappMessageFr))}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-block"
@@ -971,7 +993,7 @@ export default function Home() {
                         data-testid={`whatsapp-order-${comparison.id}`}
                       >
                         <SiWhatsapp className="h-5 w-5 me-2" />
-                        Order on WhatsApp
+                        {getLocalizedText("اطلب عبر واتساب", "Order on WhatsApp", "Commander sur WhatsApp")}
                       </Button>
                     </a>
                   </div>
