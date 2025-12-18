@@ -37,10 +37,12 @@ Preferred communication style: Simple, everyday language.
 - **Methods**: Email/password, Google OAuth, phone authentication for customers
 - **Admin Security**: 2FA support for admin accounts
 - **Role-Based Access**: customer, admin, super_admin roles via Firebase Custom Claims
-- **Cloud Functions**: Role management via `functions/src/index.ts`
-  - `initSuperAdmin`: One-time Super Admin initialization (email-only, no password)
-  - `setUserRole`: Role assignment (Super Admin only)
-  - `getUserRole`: Role retrieval
+- **Firebase Admin SDK**: Server-side token verification and custom claims management
+  - `server/firebase-admin.ts`: Admin SDK initialization and middleware
+  - `requireSuperAdmin`, `requireAdmin`: Middleware for protected routes
+- **Internal Admin Routes** (require SUPER_ADMIN_SECRET):
+  - `POST /internal/make-super-admin`: Set superAdmin claim (one-time setup)
+  - `POST /internal/set-admin`: Grant/revoke admin role
 
 ### Real-Time Features
 - **Firestore Orders**: Real-time order tracking with onSnapshot
@@ -88,10 +90,13 @@ functions/            # Firebase Cloud Functions
 
 ### Firebase Services
 - **Firebase Authentication**: User authentication and identity management
+- **Firebase Admin SDK**: Server-side authentication and custom claims
 - **Firebase Configuration**: Requires environment variables:
   - `VITE_FIREBASE_API_KEY`
   - `VITE_FIREBASE_PROJECT_ID`
   - `VITE_FIREBASE_APP_ID`
+  - `FIREBASE_SERVICE_ACCOUNT` (optional): JSON string of service account for production
+  - `SUPER_ADMIN_SECRET`: Secret for one-time super admin setup via /internal/* routes
 
 ### Database
 - **PostgreSQL**: Primary data store

@@ -8,6 +8,7 @@ export function initializeFirebaseAdmin() {
   
   try {
     const projectId = process.env.VITE_FIREBASE_PROJECT_ID;
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
     
     if (!projectId) {
       console.warn("Firebase Admin: Missing project ID, some features may not work");
@@ -15,9 +16,19 @@ export function initializeFirebaseAdmin() {
     }
 
     if (admin.apps.length === 0) {
-      admin.initializeApp({
-        projectId,
-      });
+      const config: admin.AppOptions = { projectId };
+      
+      if (serviceAccountJson) {
+        try {
+          const serviceAccount = JSON.parse(serviceAccountJson);
+          config.credential = admin.credential.cert(serviceAccount);
+          console.log("Firebase Admin: Using service account credentials");
+        } catch (parseError) {
+          console.warn("Firebase Admin: Could not parse service account JSON, using default");
+        }
+      }
+      
+      admin.initializeApp(config);
       console.log("Firebase Admin initialized with project:", projectId);
     }
     

@@ -103,10 +103,27 @@ export async function registerRoutes(
   await seedServicePackages();
 
   // ====================
-  // INTERNAL ROUTES (One-time setup)
+  // INTERNAL ROUTES (One-time setup, requires SUPER_ADMIN_SECRET)
   // ====================
 
-  app.post("/internal/make-super-admin", async (req, res) => {
+  const verifySuperAdminSecret = (req: any, res: any, next: any) => {
+    const secret = process.env.SUPER_ADMIN_SECRET;
+    const providedSecret = req.headers["x-super-admin-secret"] || req.body.secret;
+    
+    if (!secret) {
+      return res.status(503).json({ 
+        error: "SUPER_ADMIN_SECRET not configured. Set this environment variable first." 
+      });
+    }
+    
+    if (providedSecret !== secret) {
+      return res.status(403).json({ error: "Invalid super admin secret" });
+    }
+    
+    next();
+  };
+
+  app.post("/internal/make-super-admin", verifySuperAdminSecret, async (req, res) => {
     const { email } = req.body;
     if (!email) {
       return res.status(400).json({ error: "email is required" });
@@ -132,7 +149,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/internal/set-admin", async (req, res) => {
+  app.post("/internal/set-admin", verifySuperAdminSecret, async (req, res) => {
     const { email, isAdmin } = req.body;
     if (!email) {
       return res.status(400).json({ error: "email is required" });
