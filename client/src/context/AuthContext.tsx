@@ -1,6 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { auth, onAuthChange, signInWithGoogle, signInWithEmail, signUpWithEmail, logOut, type FirebaseUser } from "@/lib/firebase";
+import { auth, onAuthChange, signInWithGoogle, signInWithEmail, signUpWithEmail, logOut, getAuthClaims, type FirebaseUser } from "@/lib/firebase";
 import type { User } from "@shared/schema";
+
+interface FirebaseClaims {
+  superAdmin: boolean;
+  admin: boolean;
+}
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
@@ -12,6 +17,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  firebaseClaims: FirebaseClaims;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,12 +26,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [firebaseClaims, setFirebaseClaims] = useState<FirebaseClaims>({ superAdmin: false, admin: false });
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser) {
         try {
+          const claims = await getAuthClaims(fbUser);
+          setFirebaseClaims(claims);
+          
           const response = await fetch(`/api/users/${fbUser.uid}`);
           if (response.ok) {
             const userData = await response.json();
@@ -36,9 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error) {
           console.error("Error fetching user:", error);
           setUser(null);
+          setFirebaseClaims({ superAdmin: false, admin: false });
         }
       } else {
         setUser(null);
+        setFirebaseClaims({ superAdmin: false, admin: false });
       }
       setLoading(false);
     });
@@ -130,8 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
-  const isSuperAdmin = user?.role === "super_admin";
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin" || firebaseClaims.admin;
+  const isSuperAdmin = user?.role === "super_admin" || firebaseClaims.superAdmin;
 
   return (
     <AuthContext.Provider
@@ -145,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         isAdmin,
         isSuperAdmin,
+        firebaseClaims,
       }}
     >
       {children}

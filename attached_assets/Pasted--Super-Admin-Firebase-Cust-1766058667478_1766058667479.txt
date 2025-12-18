@@ -1,0 +1,108 @@
+مطالبة للوكيل: إنشاء نظام سوبر أدمن كامل
+أريد إضافة نظام صلاحيات Super Admin باستخدام Firebase Custom Claims. نفّذ الخطوات التالية في هذا المشروع:
+
+1) إعداد superAdmin في الـ backend
+افتح ملف السيرفر الأساسي (مثلاً server/index.ts أو الملف الذي يعرّف app = express())، وتأكد أن Firebase Admin مهيأ هناك.
+
+أضف ميدل وير جديد للتحقق من توكن Firebase والتأكد من أن المستخدم سوبر أدمن:
+
+ts
+import admin from "firebase-admin";
+
+async function requireSuperAdmin(req: any, res: any, next: any) {
+  try {
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : null;
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    const decoded = await admin.auth().verifyIdToken(token);
+    if (decoded.superAdmin === true) {
+      req.user = decoded;
+      return next();
+    }
+
+    return res.status(403).json({ error: "Not super admin" });
+  } catch (err) {
+    console.error("requireSuperAdmin error", err);
+    return res.status(401).json({ error: "Invalid token" });
+  }
+}
+أنشئ Route داخلي مخصص لتعيين مستخدم واحد كسوبر أدمن، يُستخدم مرة واحدة فقط:
+
+ts
+app.post("/internal/make-super-admin", async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: "email is required" });
+  }
+
+  try {
+    const user = await admin.auth().getUserByEmail(email);
+    await admin.auth().setCustomUserClaims(user.uid, {
+      superAdmin: true,
+    });
+    return res.json({ ok: true, uid: user.uid, superAdmin: true });
+  } catch (err) {
+    console.error("make-super-admin error", err);
+    return res.status(500).json({ error: "failed to set super admin" });
+  }
+});
+استخدم ميدل وير requireSuperAdmin لحماية روتات الإدارة الحالية أو أنشئ أمثلة لروتات إدارية محمية:
+
+ts
+app.get("/api/admin/orders", requireSuperAdmin, async (req, res) => {
+  // TODO: أرجع قائمة الطلبات بالكامل مع بيانات السائقين
+  res.json({ ok: true, message: "Super admin orders placeholder" });
+});
+
+app.post("/api/admin/assign-driver", requireSuperAdmin, async (req, res) => {
+  // TODO: منطق تعيين السائق لطلب معيّن
+  res.json({ ok: true, message: "Super admin assign driver placeholder" });
+});
+2) تعديل الـ frontend لقراءة خاصية superAdmin
+افتح client/src/context/AuthContext.tsx.
+
+بعد تسجيل الدخول أو استعادة المستخدم (داخل المكان الذي نخزن فيه user في الـ context)، اجلب idTokenResult واقرأ claim superAdmin:
+
+ts
+import { onAuthStateChanged, getIdTokenResult } from "firebase/auth";
+
+// داخل useEffect أو دالة تهيئة AuthContext:
+onAuthStateChanged(auth, async (firebaseUser) => {
+  if (firebaseUser) {
+    const tokenResult = await getIdTokenResult(firebaseUser);
+    const isSuperAdmin = tokenResult.claims.superAdmin === true;
+
+    setUser({
+      ...firebaseUser,
+      isSuperAdmin,
+    } as any);
+  } else {
+    setUser(null);
+  }
+});
+حدّث نوع الـ user في AuthContext (interface أو type) ليشمل الخاصية الاختيارية isSuperAdmin?: boolean;.
+
+3) إظهار لوحة السوبر أدمن في الواجهة
+في client/src/App.tsx أو ملف الراوتنج، أضف Route لصفحة /admin مخصصة للسوبر أدمن فقط. أنشئ صفحة جديدة client/src/pages/AdminDashboard.tsx تحتوي مبدئيًا على نص:
+
+tsx
+export default function AdminDashboard() {
+  return <div>Super Admin Dashboard - فقط للسوبر أدمن</div>;
+}
+في مكوّن Layout أو القائمة الرئيسية (مثلاً client/src/components/layout/Layout.tsx)، أضف رابط إلى لوحة السوبر أدمن يظهر فقط عندما يكون auth.user?.isSuperAdmin:
+
+tsx
+{auth.user?.isSuperAdmin && (
+  <Link href="/admin">لوحة السوبر أدمن</Link>
+)}
+في صفحة AdminDashboard.tsx نفسها، تحقّق أيضًا من auth.user?.isSuperAdmin، وإذا لم يكن سوبر أدمن أعد توجيهه إلى الصفحة الرئيسية.
+
+4) إعادة التشغيل
+بعد كل هذه التعديلات، أعد تشغيل السيرفر والـ client. لا تستدعِ /internal/make-super-admin من الكود، فقط اجعله متاحًا ليُستدعى مرة واحدة يدويًا من Postman لاحقًا.
+
+لا تقم بحذف أي منطق حالي في المشروع، فقط أضف ما سبق بحيث يكون النظام الحالي للحجوزات والعملاء كما هو، مع طبقة صلاحيات جديدة للسوبر أدمن.

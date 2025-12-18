@@ -7,6 +7,13 @@ import {
   insertBlogPostSchema, insertTestimonialSchema, insertGalleryItemSchema,
   kuwaitAreas
 } from "@shared/schema";
+import { 
+  setSuperAdmin, 
+  setAdminRole, 
+  requireSuperAdmin, 
+  requireAdmin,
+  type AuthenticatedRequest 
+} from "./firebase-admin";
 
 // Default service packages for seeding
 const defaultPackages = [
@@ -94,6 +101,62 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Seed data on startup
   await seedServicePackages();
+
+  // ====================
+  // INTERNAL ROUTES (One-time setup)
+  // ====================
+
+  app.post("/internal/make-super-admin", async (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "email is required" });
+    }
+
+    try {
+      const result = await setSuperAdmin(email);
+      
+      const user = await storage.getUserByEmail(email);
+      if (user) {
+        await storage.updateUser(user.id, { role: "super_admin" });
+      }
+      
+      return res.json({ 
+        ok: true, 
+        uid: result.uid, 
+        superAdmin: true,
+        message: `Super admin set for ${email}` 
+      });
+    } catch (err: any) {
+      console.error("make-super-admin error:", err);
+      return res.status(500).json({ error: err.message || "failed to set super admin" });
+    }
+  });
+
+  app.post("/internal/set-admin", async (req, res) => {
+    const { email, isAdmin } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "email is required" });
+    }
+
+    try {
+      const result = await setAdminRole(email, isAdmin !== false);
+      
+      const user = await storage.getUserByEmail(email);
+      if (user) {
+        await storage.updateUser(user.id, { role: isAdmin !== false ? "admin" : "customer" });
+      }
+      
+      return res.json({ 
+        ok: true, 
+        uid: result.uid, 
+        admin: isAdmin !== false,
+        message: `Admin role ${isAdmin !== false ? "granted" : "revoked"} for ${email}` 
+      });
+    } catch (err: any) {
+      console.error("set-admin error:", err);
+      return res.status(500).json({ error: err.message || "failed to set admin role" });
+    }
+  });
 
   // ====================
   // PUBLIC ROUTES

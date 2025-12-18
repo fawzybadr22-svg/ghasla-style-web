@@ -7,12 +7,14 @@ import {
   createUserWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged,
+  getIdTokenResult,
   RecaptchaVerifier,
   signInWithPhoneNumber,
   PhoneAuthProvider,
   linkWithCredential,
   type User as FirebaseUser,
-  type ConfirmationResult
+  type ConfirmationResult,
+  type IdTokenResult
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
@@ -45,6 +47,25 @@ export const logOut = () => signOut(auth);
 
 export const onAuthChange = (callback: (user: FirebaseUser | null) => void) => 
   onAuthStateChanged(auth, callback);
+
+export const getTokenResult = async (user: FirebaseUser): Promise<IdTokenResult> => 
+  getIdTokenResult(user, true);
+
+export const getAuthClaims = async (user: FirebaseUser): Promise<{ 
+  superAdmin: boolean; 
+  admin: boolean;
+}> => {
+  try {
+    const tokenResult = await getIdTokenResult(user, true);
+    return {
+      superAdmin: tokenResult.claims.superAdmin === true,
+      admin: tokenResult.claims.admin === true || tokenResult.claims.superAdmin === true,
+    };
+  } catch (error) {
+    console.error("Error getting auth claims:", error);
+    return { superAdmin: false, admin: false };
+  }
+};
 
 export const setupRecaptcha = (buttonId: string) => {
   const recaptchaVerifier = new RecaptchaVerifier(auth, buttonId, {
