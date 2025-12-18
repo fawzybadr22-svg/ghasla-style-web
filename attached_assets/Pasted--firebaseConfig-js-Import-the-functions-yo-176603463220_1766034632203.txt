@@ -1,0 +1,93 @@
+استخدم الكود التالي كما هو، ولا تغيّر أي قيمة داخل firebaseConfig:
+
+js
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBBDE1w48o4Z9v5AK-LHv_mLUWA12XHkGo",
+  authDomain: "ghasla-style.firebaseapp.com",
+  projectId: "ghasla-style",
+  storageBucket: "ghasla-style.firebasestorage.app",
+  messagingSenderId: "7570975896156",
+  appId: "1:7570975896156:web:a0a6e074e50a2e8eebfd99",
+  measurementId: "G-1C1ZRQGS1W"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+المطلوب بالضبط:
+
+استورِد حزم Authentication من نفس SDK:
+
+js
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup
+} from "firebase/auth";
+أنشئ كائن auth وكائن provider بعد التهيئة:
+
+js
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+اربط هذه الدوال مع نموذج تسجيل الدخول الموجود في الصفحة:
+
+حقل الإيميل له id مثلًا: emailInput.
+
+حقل كلمة المرور id مثلًا: passwordInput.
+
+زر تسجيل الدخول بالإيميل id مثلًا: loginBtn.
+
+زر تسجيل الدخول بجوجل id مثلًا: googleLoginBtn.
+
+استخدم كود بالمنطق التالي:
+
+js
+const emailInput = document.getElementById("emailInput");
+const passwordInput = document.getElementById("passwordInput");
+const loginBtn = document.getElementById("loginBtn");
+const googleLoginBtn = document.getElementById("googleLoginBtn");
+const errorBox = document.getElementById("authErrorBox"); // div مخصص للأخطاء
+
+function showError(message) {
+  if (errorBox) {
+    errorBox.textContent = message;
+    errorBox.style.display = "block";
+  } else {
+    alert(message);
+  }
+}
+
+loginBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  const email = emailInput.value;
+  const password = passwordInput.value;
+  signInWithEmailAndPassword(auth, email, password)
+    .then((cred) => {
+      // TODO: توجيه المستخدم للداشبورد أو الصفحة الرئيسية
+    })
+    .catch((error) => {
+      showError(error.message);
+    });
+});
+
+googleLoginBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  signInWithPopup(auth, provider)
+    .then((result) => {
+      // TODO: توجيه المستخدم بعد نجاح تسجيل الدخول
+    })
+    .catch((error) => {
+      showError(error.message);
+    });
+});
+تأكد أن:
+
+رسائل الخطأ كلها تمر عبر الدالة showError وتظهر في authErrorBox على شكل رسالة نظيفة، بدون البلوك الأحمر الطويل الحالي.
+
+لا تقوم بتعديل أو استبدال قيم firebaseConfig نهائيًا، فقط أضف أكواد الـ Auth والـ event listeners حوله
