@@ -191,3 +191,42 @@ All admin actions are logged to `auditLogs` table with:
 - Target collection/ID
 - Old/new values
 - Timestamp
+
+## Firebase Production Deployment
+
+### Deploying Security Rules
+Before going to production, deploy Firebase security rules:
+
+```bash
+# Install Firebase CLI (if not already installed)
+npm install -g firebase-tools
+
+# Login to Firebase
+firebase login
+
+# Deploy Firestore rules
+firebase deploy --only firestore:rules
+
+# Deploy Storage rules
+firebase deploy --only storage:rules
+
+# Deploy Firestore indexes
+firebase deploy --only firestore:indexes
+
+# Or deploy everything at once
+firebase deploy --only firestore,storage
+```
+
+### Security Rules Files
+- `firestore.rules` - Firestore database access rules
+- `storage.rules` - Firebase Storage access rules
+- `firestore.indexes.json` - Composite indexes for queries
+- `firebase.json` - Firebase project configuration
+
+### Pre-Production Checklist
+1. All secrets configured in Replit Secrets panel (not in code)
+2. Firebase security rules deployed (not in test mode)
+3. Set `ALLOWED_ORIGINS` for production domains
+4. Test all user roles: Super Admin, Admin, Delegate, Customer
+5. Verify rate limiting is working correctly
+6. Check HTTPS redirect in production
