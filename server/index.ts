@@ -3,17 +3,97 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { initializeFirebaseAdmin } from "./firebase-admin";
+import helmet from "helmet";
 
 initializeFirebaseAdmin();
 
 const app = express();
 const httpServer = createServer(app);
 
+const isProduction = process.env.NODE_ENV === "production";
+
+// Trust proxy for proper IP detection behind reverse proxies (Replit, Cloudflare)
+// MUST be set BEFORE any rate limiting middleware
+app.set("trust proxy", 1);
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
   }
 }
+
+// ===========================================
+// SECURITY MIDDLEWARE (Order matters!)
+// ===========================================
+
+// 1. Helmet - Security Headers (CSP disabled for development compatibility)
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
+// 2. HTTPS Redirect - ONLY in Production
+if (isProduction) {
+  app.use((req, res, next) => {
+    if (req.protocol !== "https" && req.headers["x-forwarded-proto"] !== "https") {
+      return res.redirect(301, `https://${req.headers.host}${req.url}`);
+    }
+    next();
+  });
+}
+
+// 3. CORS Configuration - Handle OPTIONS first
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim().replace(/\/$/, ""))
+  : [];
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin?.replace(/\/$/, "");
+  
+  // Handle OPTIONS preflight requests first (before any other checks)
+  if (req.method === "OPTIONS") {
+    if (isProduction && allowedOrigins.length > 0) {
+      if (origin && allowedOrigins.includes(origin)) {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+      } else {
+        return res.status(403).json({ error: "Origin not allowed" });
+      }
+    } else {
+      res.setHeader("Access-Control-Allow-Origin", origin || "*");
+      if (origin) {
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+      }
+    }
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+    res.setHeader("Access-Control-Max-Age", "86400");
+    return res.status(204).end();
+  }
+  
+  // Regular requests
+  if (isProduction && allowedOrigins.length > 0) {
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+    }
+    // In production, if origin not in list, don't set CORS headers (browser will block)
+  } else {
+    // Development: allow all origins
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+    }
+  }
+  
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+  next();
+});
+
+// ===========================================
+// BODY PARSING (Must come before rate limiters)
+// ===========================================
 
 app.use(
   express.json({
@@ -24,6 +104,8 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+
+// Rate limiters are now in server/security.ts and applied in server/routes.ts
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {

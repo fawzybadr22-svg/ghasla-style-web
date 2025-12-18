@@ -115,3 +115,79 @@ functions/            # Firebase Cloud Functions
 - i18n: i18next, react-i18next, i18next-browser-languagedetector
 - Animation: framer-motion
 - Icons: lucide-react, react-icons
+- Security: express-rate-limit, helmet
+
+## Security Configuration
+
+### Rate Limiting (server/security.ts + server/routes.ts)
+Rate limiting is implemented using `express-rate-limit` to protect against abuse. Rate limiters are defined in `server/security.ts` and applied to routes in `server/routes.ts`:
+
+| Route Pattern | Limit | Window | Purpose |
+|---------------|-------|--------|---------|
+| `/api/*` (general) | 100 requests | 1 minute | General API protection |
+| `/api/auth/*` | 10 requests | 1 minute | Authentication endpoints |
+| `/api/users/*` | 10 requests | 1 minute | User account operations |
+| `/api/orders/*` | 20 requests | 1 minute | Order creation/management |
+| `/api/contact/*` | 5 requests | 1 minute | Contact form submissions |
+| `/internal/*` | 5 requests | 1 hour | Admin setup routes (very strict) |
+
+**To modify limits**: Edit the `rateLimit()` configurations in `server/security.ts`. Adjust `windowMs` (milliseconds) and `max` (request count) values.
+
+### CORS Configuration (server/index.ts)
+CORS is configured dynamically based on environment:
+
+**Development Mode**:
+- Allows all origins for local testing
+
+**Production Mode**:
+- Only allows origins specified in `ALLOWED_ORIGINS` environment variable
+- Set `ALLOWED_ORIGINS` as comma-separated list of allowed domains:
+  ```
+  ALLOWED_ORIGINS=https://ghaslastyle.com,https://admin.ghaslastyle.com,https://delegate.ghaslastyle.com
+  ```
+
+**Allowed Methods**: GET, POST, PUT, PATCH, DELETE, OPTIONS
+**Allowed Headers**: Content-Type, Authorization, X-Requested-With
+**Credentials**: Enabled
+**Preflight Cache**: 24 hours (86400 seconds)
+
+### HTTPS Enforcement
+- **Automatic Redirect**: In production, all HTTP requests are automatically redirected to HTTPS (301 redirect)
+- **Detection**: Uses `x-forwarded-proto` header (standard for reverse proxies like Replit/Cloudflare)
+- **Replit**: HTTPS is enforced automatically by Replit's infrastructure
+
+### Security Headers (Helmet)
+The `helmet` middleware adds these security headers:
+- X-DNS-Prefetch-Control
+- X-Frame-Options (clickjacking protection)
+- X-Content-Type-Options (MIME sniffing protection)
+- Referrer-Policy
+- X-XSS-Protection
+
+**Note**: Content-Security-Policy is disabled for development compatibility with Vite HMR.
+
+### Authentication & Authorization Middleware
+Located in `server/firebase-admin.ts`:
+
+| Middleware | Access Level | Protected Routes |
+|------------|--------------|------------------|
+| `requireAuth` | Any authenticated user | Customer-specific data |
+| `requireDelegate` | Delegate, Admin, Super Admin | `/api/delegate/*` |
+| `requireAdmin` | Admin, Super Admin | `/api/admin/*` (most routes) |
+| `requireSuperAdmin` | Super Admin only | `/api/admin/admins/*`, admin management |
+
+### Environment Variables (Secrets)
+All sensitive data stored as encrypted secrets (never in code):
+- `SUPER_ADMIN_SECRET`: One-time admin setup
+- `SESSION_SECRET`: Session encryption
+- `FIREBASE_SERVICE_ACCOUNT`: Firebase Admin SDK credentials
+- `DATABASE_URL`: PostgreSQL connection string
+- `VITE_FIREBASE_*`: Firebase client configuration
+
+### Audit Logging
+All admin actions are logged to `auditLogs` table with:
+- Action type
+- Performing user ID
+- Target collection/ID
+- Old/new values
+- Timestamp

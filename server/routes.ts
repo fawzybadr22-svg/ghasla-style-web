@@ -14,6 +14,13 @@ import {
   requireAdmin,
   type AuthenticatedRequest 
 } from "./firebase-admin";
+import { 
+  generalApiLimiter, 
+  authLimiter, 
+  orderLimiter, 
+  internalLimiter, 
+  contactLimiter 
+} from "./security";
 
 // Default service packages for seeding
 const defaultPackages = [
@@ -101,6 +108,20 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Seed data on startup
   await seedServicePackages();
+
+  // ====================
+  // APPLY RATE LIMITERS TO ROUTE GROUPS
+  // ====================
+  
+  // General API rate limit
+  app.use("/api", generalApiLimiter);
+  
+  // Specific stricter limits for sensitive routes
+  app.use("/api/auth", authLimiter);
+  app.use("/api/users", authLimiter);
+  app.use("/api/orders", orderLimiter);
+  app.use("/api/contact", contactLimiter);
+  app.use("/internal", internalLimiter);
 
   // ====================
   // INTERNAL ROUTES (One-time setup, requires SUPER_ADMIN_SECRET)
