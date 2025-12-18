@@ -28,7 +28,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase only if not already initialized (prevents duplicate-app error during hot reload)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 

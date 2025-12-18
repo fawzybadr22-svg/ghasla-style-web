@@ -1,0 +1,12 @@
+# Compiled JavaScript files
+lib/
+
+# Node modules
+node_modules/
+
+# Local Firebase emulator data
+.firebase/
+
+# Environment files
+.env
+.env.local

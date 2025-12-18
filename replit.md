@@ -36,7 +36,16 @@ Preferred communication style: Simple, everyday language.
 - **Provider**: Firebase Authentication (configured in `client/src/lib/firebase.ts`)
 - **Methods**: Email/password, Google OAuth, phone authentication for customers
 - **Admin Security**: 2FA support for admin accounts
-- **Role-Based Access**: customer, admin, super_admin roles defined in database schema
+- **Role-Based Access**: customer, admin, super_admin roles via Firebase Custom Claims
+- **Cloud Functions**: Role management via `functions/src/index.ts`
+  - `initSuperAdmin`: One-time Super Admin initialization (email-only, no password)
+  - `setUserRole`: Role assignment (Super Admin only)
+  - `getUserRole`: Role retrieval
+
+### Real-Time Features
+- **Firestore Orders**: Real-time order tracking with onSnapshot
+- **Dual Storage**: PostgreSQL for backend persistence, Firestore for real-time client updates
+- **Loyalty Points**: Automatic calculation and application on order completion
 
 ### Project Structure
 ```
@@ -48,6 +57,11 @@ client/               # React frontend application
     context/          # React contexts (Auth, Theme)
     hooks/            # Custom React hooks
     lib/              # Utilities, Firebase config, i18n, query client
+      firebase.ts            # Firebase app initialization
+      firebase-functions.ts  # Cloud Functions client helpers
+      firestore-orders.ts    # Firestore order management
+    types/            # TypeScript type definitions
+      firestore-order.ts     # Firestore order types
     pages/            # Route page components
       admin/          # Admin dashboard pages
 server/               # Express backend
@@ -59,6 +73,10 @@ server/               # Express backend
   vite.ts            # Vite dev server integration
 shared/               # Shared code between client and server
   schema.ts          # Drizzle database schema and Zod types
+functions/            # Firebase Cloud Functions
+  src/
+    index.ts         # Cloud Functions (initSuperAdmin, setUserRole, getUserRole)
+  README.md          # Setup and deployment instructions
 ```
 
 ### Build and Development
