@@ -1,0 +1,75 @@
+In the “Before & After Results” section (three cards: full detailing, interior cleaning, external wash), please upgrade the visuals and copy as follows:
+
+Replace all current photos with more premium, realistic images
+
+Use high‑quality, photorealistic car images that clearly show strong Before/After contrast for each service:
+
+Card 1: full detailing / paint correction (sports or luxury car).
+
+Card 2: deep interior cleaning (SUV interior).
+
+Card 3: external wash for a daily sedan covered in dirt vs. completely clean.
+
+Keep the same layout of three horizontal cards, but ensure all new photos are license‑free and stylistically consistent with the dark Ghasla Style theme (dark backgrounds, glossy look).
+
+Use English “Before / After” labels only, embedded on the images
+
+Remove any Arabic labels for this section and instead:
+
+Place a small, stylish badge saying “Before” on the left side of each comparison image.
+
+Place a matching badge saying “After” on the right side of each comparison image.
+
+The badges should be visually integrated into the image (e.g. top‑left and top‑right corners of the photo) and always visible, not floating outside the card.
+
+Use brand colors:
+
+Before badge: subtle gray or green.
+
+After badge: dark orange to highlight the result.
+
+Add a short persuasive line under each card
+
+Under each Before/After card, keep the service title (e.g. “Full Detailing”, “Interior Deep Clean”, “Exterior Wash”) and add a one‑line call‑to‑action that motivates the customer to book, in English only. Examples:
+
+Full Detailing: “Turn dull paint into a mirror‑finish showroom shine.”
+
+Interior Deep Clean: “Breathe in a fresh, spotless cabin – every trip.”
+
+Exterior Wash: “Remove weeks of dirt in just one premium wash.”
+
+Style the text to match the site typography and keep it centered under each card.
+
+Add smooth animations to images and texts
+
+When the section scrolls into view:
+
+Each card should fade in and slide up slightly with a staggered delay (card 1, then 2, then 3).
+
+The Before/After images can have a gentle zoom‑in on hover to draw attention.
+
+Optionally add a subtle motion to the divider/transition between Before and After (e.g. glow effect when hovering the card).
+
+Headline and subtext of the section should also fade/slide in together.
+
+Add a WhatsApp “Order Service” button for each card
+
+Under the descriptive line of each service card, add a WhatsApp CTA button with the official green color (#25D366) and text like “Order on WhatsApp”.
+
+All buttons should link to the same WhatsApp number: https://wa.me/96596068518 with a prefilled message referencing the service, e.g.:
+
+For Full Detailing: “Hi, I’d like to book a Full Detailing service.”
+
+For Interior Deep Clean: “Hi, I’d like to book an Interior Deep Clean.”
+
+For Exterior Wash: “Hi, I’d like to book an Exterior Wash.”
+
+Add hover animation (color shift + slight scale) to these WhatsApp buttons to make them feel interactive.
+
+General requirements
+
+Keep the section fully responsive, with cards stacking nicely on mobile.
+
+Maintain RTL support for surrounding Arabic UI while keeping this section’s labels and CTA lines in English as specified.
+
+Ensure no console errors or layout breaks are introduced after these changes.
