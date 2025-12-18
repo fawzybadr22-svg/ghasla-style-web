@@ -96,6 +96,18 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
+      
+      // Log curl example for super admin setup
+      const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(",")[0] || `localhost:${port}`;
+      const protocol = domain.includes("localhost") ? "http" : "https";
+      console.log("\n========================================");
+      console.log("SUPER ADMIN SETUP - One-time curl example:");
+      console.log("========================================");
+      console.log(`curl -X POST ${protocol}://${domain}/internal/make-super-admin \\`);
+      console.log(`  -H "Content-Type: application/json" \\`);
+      console.log(`  -d '{"email": "fawzybadr22@gmail.com", "secret": "YOUR_SUPER_ADMIN_SECRET"}'`);
+      console.log("\nReplace YOUR_SUPER_ADMIN_SECRET with the value of SUPER_ADMIN_SECRET env var");
+      console.log("========================================\n");
     },
   );
 })();

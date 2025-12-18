@@ -1,0 +1,61 @@
+أريد ترقية بريدي إلى Super Admin والتأكد أن لوحة السوبر أدمن تعمل بدون أخطاء. يرجى تنفيذ الآتي:
+
+1) تأكيد مسار ترقية السوبر أدمن
+ابحث في كود السيرفر عن أي Route أو كود يقرأ SUPER_ADMIN_SECRET أو ينشئ superAdmin باستخدام setCustomUserClaims، وحدد اسم المسار النهائي (مثلاً /internal/make-super-admin أو /internal/setup-super-admin).
+
+تأكد أن هذا المسار:
+
+يستقبل JSON يحتوي على email وsecret.
+
+يتحقق أن secret يطابق قيمة متغير البيئة SUPER_ADMIN_SECRET.
+
+يستخدم Firebase Admin لعمل:
+
+ts
+const user = await admin.auth().getUserByEmail(email);
+await admin.auth().setCustomUserClaims(user.uid, { superAdmin: true });
+يعيد رد JSON واضح مثل:
+
+json
+{ "ok": true, "uid": "...", "superAdmin": true }
+2) تجهيز استدعاء لمسار الترقية (للاستخدام مرة واحدة)
+أنشئ لي داخل المشروع ملف نصي بسيط أو Log في الكونسول يطبع مثال لطلب curl يمكنني تشغيله من خارج Replit لترقية بريدي fawzybadr22@gmail.com إلى سوبر أدمن، باستخدام:
+
+URL: دومين الـ Production الحالي للمشروع + مسار الترقية الذي وجدته.
+
+Body JSON يحتوي على:
+
+json
+{
+  "email": "fawzybadr22@gmail.com",
+  "secret": "Fawzy-Ghasla-Admin-2025!"
+}
+لا تنفّذ الطلب فعليًا، فقط أعطني الـ curl أو مثال Postman في Log واضح في الكونسول.
+
+3) تصحيح لوحة Super Admin (صفحة /admin)
+في جانب الـ frontend:
+
+تأكد أن هناك صفحة مثل client/src/pages/AdminDashboard.tsx تحتوي محتوى مبدئيًا:
+
+tsx
+export default function AdminDashboard() {
+  return <div>Super Admin Dashboard - إدارة الطلبات والسائقين</div>;
+}
+في ملف الراوتنج (مثلاً client/src/App.tsx أو أي مكان يستخدم wouter)، أضف Route لمسار /admin يربط إلى AdminDashboard، بحيث لا يرجع 404 بعد الآن.
+
+تأكد أن رابط لوحة السوبر أدمن في الـ Navbar أو Layout يظهر فقط عندما يكون auth.user?.isSuperAdmin === true. إذا لم يكن كذلك، عدّل الكود لقراءة isSuperAdmin من AuthContext.
+
+داخل AdminDashboard.tsx، أضف حماية بسيطة:
+
+إذا لم يكن المستخدم الحالي isSuperAdmin، اعرض رسالة "غير مصرح لك" أو أعد توجيهه للصفحة الرئيسية.
+
+4) التحقق النهائي
+بعد تنفيذ الخطوات:
+
+أعد تشغيل التطبيق.
+
+تأكد من خلال الكونسول أن Example curl الذي طبعته صحيح (URL + JSON).
+
+تأكد أن زيارة /admin بعد تسجيل الدخول كمستخدم عادي تعطي منع صلاحية، وبعد أن يكون superAdmin (عندما أنفذ أنا طلب الترقية) تفتح الصفحة بشكل طبيعي.
+
+لا تحذف أي أكواد حالية، فقط أضف أو عدّل بحسب ما سبق، وحافظ على جميع وظائف الحجز والطلبات كما هي.
