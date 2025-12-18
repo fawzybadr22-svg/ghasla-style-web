@@ -35,6 +35,12 @@ export default function Booking() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [locationDetected, setLocationDetected] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{
+    area?: string;
+    address?: string;
+    date?: string;
+    time?: string;
+  }>({});
   const [formData, setFormData] = useState({
     carType: "sedan" as "sedan" | "suv" | "other",
     carDetails: "",
@@ -226,11 +232,67 @@ export default function Booking() {
     }
   };
 
+  const validateStep3 = (): boolean => {
+    const errors: typeof fieldErrors = {};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (!formData.area) {
+      errors.area = getLocalizedText("برجاء اختيار المنطقة", "Please select an area", "Veuillez sélectionner une zone");
+    }
+
+    if (!formData.address.trim()) {
+      errors.address = getLocalizedText("برجاء إدخال العنوان التفصيلي", "Please enter a detailed address", "Veuillez entrer une adresse détaillée");
+    }
+
+    if (!formData.date) {
+      errors.date = getLocalizedText("برجاء اختيار التاريخ", "Please select a date", "Veuillez sélectionner une date");
+    } else {
+      const selectedDate = new Date(formData.date);
+      selectedDate.setHours(0, 0, 0, 0);
+      if (selectedDate < today) {
+        errors.date = getLocalizedText("التاريخ يجب أن يكون اليوم أو في المستقبل", "Date must be today or in the future", "La date doit être aujourd'hui ou dans le futur");
+      }
+    }
+
+    if (!formData.time) {
+      errors.time = getLocalizedText("برجاء اختيار الوقت", "Please select a time", "Veuillez sélectionner une heure");
+    } else {
+      const [hours, minutes] = formData.time.split(":").map(Number);
+      if (hours < 6 || hours > 22 || (hours === 22 && minutes > 0)) {
+        errors.time = getLocalizedText("الوقت يجب أن يكون بين 6 صباحاً و 10 مساءً", "Time must be between 6:00 AM and 10:00 PM", "L'heure doit être entre 6h00 et 22h00");
+      }
+      
+      if (formData.date === today.toISOString().split("T")[0]) {
+        const now = new Date();
+        const selectedTime = new Date();
+        selectedTime.setHours(hours, minutes, 0, 0);
+        if (selectedTime <= now) {
+          errors.time = getLocalizedText("الوقت يجب أن يكون في المستقبل", "Time must be in the future", "L'heure doit être dans le futur");
+        }
+      }
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleNextStep = () => {
+    if (step === 3) {
+      if (validateStep3()) {
+        setFieldErrors({});
+        setStep(step + 1);
+      }
+    } else {
+      setStep(step + 1);
+    }
+  };
+
   const canProceed = () => {
     switch (step) {
       case 1: return formData.carType;
       case 2: return formData.packageId;
-      case 3: return formData.address && formData.area && formData.date && formData.time;
+      case 3: return formData.address.trim() && formData.area && formData.date && formData.time;
       case 4: return formData.paymentMethod;
       default: return false;
     }
@@ -338,12 +400,16 @@ export default function Booking() {
                   <Label className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-primary" />
                     {getLocalizedText("المنطقة", "Area", "Zone")}
+                    <span className="text-destructive">*</span>
                   </Label>
                   <Select
                     value={formData.area}
-                    onValueChange={(value) => setFormData({ ...formData, area: value })}
+                    onValueChange={(value) => {
+                      setFormData({ ...formData, area: value });
+                      if (fieldErrors.area) setFieldErrors(prev => ({ ...prev, area: undefined }));
+                    }}
                   >
-                    <SelectTrigger data-testid="select-area">
+                    <SelectTrigger data-testid="select-area" className={fieldErrors.area ? "border-destructive" : ""}>
                       <SelectValue placeholder={getLocalizedText("اختر المنطقة", "Select area", "Sélectionner la zone")} />
                     </SelectTrigger>
                     <SelectContent className="max-h-[300px]">
@@ -354,12 +420,16 @@ export default function Booking() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {fieldErrors.area && (
+                    <p className="text-sm text-destructive">{fieldErrors.area}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <Navigation className="h-4 w-4 text-primary" />
                     {getLocalizedText("العنوان التفصيلي", "Detailed Address", "Adresse Détaillée")}
+                    <span className="text-destructive">*</span>
                   </Label>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
@@ -368,9 +438,10 @@ export default function Booking() {
                         onChange={(e) => {
                           setFormData({ ...formData, address: e.target.value });
                           setLocationDetected(false);
+                          if (fieldErrors.address) setFieldErrors(prev => ({ ...prev, address: undefined }));
                         }}
                         placeholder={getLocalizedText("أدخل العنوان أو اضغط على زر الموقع", "Enter address or click location button", "Entrez l'adresse ou cliquez sur le bouton de localisation")}
-                        required
+                        className={fieldErrors.address ? "border-destructive" : ""}
                         data-testid="input-address"
                       />
                     </div>
@@ -381,7 +452,7 @@ export default function Booking() {
                       onClick={handleGetLocation}
                       disabled={isLocating}
                       data-testid="button-get-location"
-                      title={getLocalizedText("تحديد الموقع تلقائياً", "Auto-detect location", "Détecter l'emplacement")}
+                      title={getLocalizedText("تحديد الموقع تلقائياً (اختياري)", "Auto-detect location (optional)", "Détecter l'emplacement (optionnel)")}
                     >
                       {isLocating ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -390,7 +461,10 @@ export default function Booking() {
                       )}
                     </Button>
                   </div>
-                  {locationDetected && (
+                  {fieldErrors.address && (
+                    <p className="text-sm text-destructive">{fieldErrors.address}</p>
+                  )}
+                  {locationDetected && !fieldErrors.address && (
                     <p className="text-sm text-green-600 flex items-center gap-1">
                       <Check className="h-3 w-3" />
                       {getLocalizedText("تم تحديد موقعك تلقائياً", "Location detected automatically", "Emplacement détecté automatiquement")}
@@ -403,35 +477,48 @@ export default function Booking() {
                     <Label className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-primary" />
                       {getLocalizedText("التاريخ", "Date", "Date")}
+                      <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       type="date"
                       value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value, time: "" })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, date: e.target.value, time: "" });
+                        if (fieldErrors.date) setFieldErrors(prev => ({ ...prev, date: undefined }));
+                      }}
                       min={new Date().toISOString().split("T")[0]}
-                      required
-                      className="cursor-pointer"
+                      className={`cursor-pointer ${fieldErrors.date ? "border-destructive" : ""}`}
                       data-testid="input-date"
                     />
+                    {fieldErrors.date && (
+                      <p className="text-sm text-destructive">{fieldErrors.date}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-primary" />
                       {getLocalizedText("الوقت", "Time", "Heure")}
+                      <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       type="time"
                       value={formData.time}
-                      onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, time: e.target.value });
+                        if (fieldErrors.time) setFieldErrors(prev => ({ ...prev, time: undefined }));
+                      }}
                       min={getMinTime()}
                       max="22:00"
-                      required
-                      className="cursor-pointer"
+                      className={`cursor-pointer ${fieldErrors.time ? "border-destructive" : ""}`}
                       data-testid="input-time"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      {getLocalizedText("من 6 صباحاً إلى 10 مساءً", "6:00 AM to 10:00 PM", "De 6h00 à 22h00")}
-                    </p>
+                    {fieldErrors.time ? (
+                      <p className="text-sm text-destructive">{fieldErrors.time}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        {getLocalizedText("من 6 صباحاً إلى 10 مساءً", "6:00 AM to 10:00 PM", "De 6h00 à 22h00")}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -535,7 +622,7 @@ export default function Booking() {
 
           {step < 4 ? (
             <Button
-              onClick={() => setStep(step + 1)}
+              onClick={handleNextStep}
               disabled={!canProceed()}
               data-testid="button-next"
             >
