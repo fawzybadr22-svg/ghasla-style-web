@@ -1,0 +1,117 @@
+Please apply the following fixes and enhancements to the Ghasla Style web app, point by point, and ensure everything is fully functional and polished.
+
+1) Fix “Before / After” labels and add animation (image tnzyl‑38)
+
+In the “Before & After” comparison section, correct the placement and language of all labels:
+
+On every left side, clearly show a small badge or label reading “Before / قبل”.
+
+On every right side, clearly show a small badge or label reading “After / بعد”.
+
+Make sure there are no mixed labels (no “قبل” appearing on the After side, and no “بعد” on the Before side).
+
+Align the labels consistently (e.g. top‑left for Before, top‑right for After), and keep them in brand colors (dark orange for After, green for Before).
+
+Add a smooth, modern animation to the comparison:
+
+Either use a draggable vertical slider allowing the user to slide between Before and After, or use a hover/reveal effect that fades between them.
+
+Animate the labels to gently fade/slide in when the section enters the viewport.
+
+Ensure the section remains fully responsive on mobile and desktop.
+
+2) Fix and fully implement the registration system (image q7)
+
+The current registration form does not accept Google, email, or phone sign‑ups. Implement a complete, working auth system using Firebase Authentication or the existing backend, with these flows:
+
+Google Sign‑In (OAuth):
+
+Add a working “Sign in with Google” button at the top of the form.
+
+On click, trigger the Firebase Google provider flow.
+
+On success, create/update a user document in the database with name, email, avatar (if available), and default role customer.
+
+Email + Password registration:
+
+Validate that the email is in a correct format and not already used.
+
+Enforce a minimum password strength (length + at least one number or symbol).
+
+On success, create the user in Firebase Auth and a matching profile document.
+
+Phone number registration/login (optional second factor):
+
+Implement phone auth with SMS OTP.
+
+Provide an input field for phone number with Kuwait code by default (+965) and basic validation.
+
+After verifying OTP, link the phone number to the user account.
+
+On the UI side:
+
+Keep the Arabic labels exactly as shown in q7 (الاسم الكامل، البريد الإلكتروني، رقم الهاتف، كلمة المرور…).
+
+Show clear error messages when any field is invalid or when auth fails (e.g. “هذا البريد مستخدم بالفعل” / “This email is already in use”).
+
+After successful registration, redirect the user to their account/dashboard and show a success toast.
+
+Make sure all three methods (Google, email, phone) are tested and working end‑to‑end.
+
+3) Improve area selection, address, and date/time picking (image q8)
+
+Replace the current grid of area buttons (Ahmadi, Farwaniya, Fahaheel, …) with a vertical scrollable list or dropdown:
+
+Use a clean scrollable dropdown or list where the user can scroll down to choose the area instead of a large grid.
+
+Keep all existing area names (in English/Arabic) but present them in a more compact, mobile‑friendly UI.
+
+For the address field:
+
+Add a clickable icon or button inside the address input (e.g. a location pin).
+
+When the user clicks it, attempt to auto‑detect the location using the browser’s Geolocation API and/or Google Maps Autocomplete:
+
+If permission is granted, fill the address field with the detected location text (street, area).
+
+Show a small note like “تم تحديد موقعك تلقائياً” when successful.
+
+For date and time:
+
+Replace manual text inputs with proper date picker and time picker components.
+
+Date picker: calendar UI where the user taps to select the day.
+
+Time picker: dropdown or clock UI to select hour and minutes in 24‑hour format.
+
+Prevent selecting past dates/times; only allow current/future slots.
+
+Ensure these controls work well on mobile (touch‑friendly) and desktop.
+
+4) Enhance feature icons section with car backgrounds (image q6)
+
+In the section that currently shows simple orange icons (crown, sparkle, car, etc.), add background images of modern, clean cars behind each icon to make the section more premium:
+
+Use high‑resolution photos of recent, clean cars that fit the brand (sedan/SUV), but do not copy the exact reference images.
+
+Apply a dark overlay (gradient or semi‑transparent black) over the photos so that the orange icons remain clearly visible.
+
+Keep the icons centered, with the overlay ensuring good contrast.
+
+Add subtle animations:
+
+On hover, slightly brighten the background photo and scale the icon up by a few percent.
+
+On scroll into view, fade/slide the cards in from below.
+
+Make sure the backgrounds match the overall color palette (dark blue + orange) and do not visually clash with the rest of the page.
+
+5) Quality and consistency requirements
+
+For all changes above, maintain RTL support for Arabic and keep all new text bilingual where appropriate (Arabic primary, English secondary).
+
+Ensure no console errors are thrown in the browser after these updates.
+
+Keep styles consistent with the existing design system (fonts, colors, border radius, shadows) already used in the Ghasla Style project.
+
+Test on desktop and mobile viewport sizes to confirm everything looks good and is fully usable.

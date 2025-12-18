@@ -16,6 +16,9 @@ import fleetImage from "@assets/generated_images/branded_mobile_wash_van.png";
 import beforeAfterExterior from "@assets/generated_images/exterior_wash_before_after.png";
 import beforeAfterInterior from "@assets/generated_images/interior_cleaning_before_after.png";
 import beforeAfterDetailing from "@assets/generated_images/full_detailing_before_after.png";
+import serviceExteriorBg from "@assets/generated_images/premium_sedan_car_wash.png";
+import serviceInteriorBg from "@assets/generated_images/premium_car_interior_clean.png";
+import serviceVipBg from "@assets/generated_images/luxury_suv_detailing_studio.png";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
@@ -53,6 +56,11 @@ export default function Home() {
   const [carType, setCarType] = useState<"sedan" | "suv">("sedan");
   const [service, setService] = useState("full");
   const [scheduleType, setScheduleType] = useState<"now" | "later">("now");
+  const [sliderPositions, setSliderPositions] = useState<{[key: number]: number}>({1: 50, 2: 50, 3: 50});
+
+  const handleSliderChange = (id: number, value: number) => {
+    setSliderPositions(prev => ({ ...prev, [id]: value }));
+  };
 
   const getLocalizedText = (ar: string, en: string, fr: string) => {
     return i18n.language === "ar" ? ar : i18n.language === "fr" ? fr : en;
@@ -103,7 +111,7 @@ export default function Home() {
         { ar: "تلميع الزجاج", en: "Glass polish", fr: "Polish vitres" },
       ],
       price: 3,
-      image: "exterior",
+      bgImage: serviceExteriorBg,
     },
     {
       icon: Sparkles,
@@ -119,7 +127,7 @@ export default function Home() {
         { ar: "تعقيم وتعطير", en: "Sanitize & freshen", fr: "Désinfection" },
       ],
       price: 5,
-      image: "interior",
+      bgImage: serviceInteriorBg,
     },
     {
       icon: Crown,
@@ -135,7 +143,7 @@ export default function Home() {
         { ar: "تجديد البلاستيك والجلد", en: "Plastic & leather", fr: "Plastique & cuir" },
       ],
       price: 15,
-      image: "vip",
+      bgImage: serviceVipBg,
     },
   ];
 
@@ -548,21 +556,29 @@ export default function Home() {
           >
             {serviceCards.map((card, index) => (
               <motion.div key={index} variants={fadeInUp}>
-                <Card className="h-full overflow-hidden group hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                  <div className="h-48 bg-gradient-to-br from-primary/20 to-chart-1/20 flex items-center justify-center relative overflow-hidden">
-                    <card.icon className="h-20 w-20 text-primary/50 group-hover:scale-110 transition-transform duration-500" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent opacity-60" />
+                <Card className="h-full overflow-hidden group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
+                  <div className="h-52 relative overflow-hidden">
+                    <img
+                      src={card.bgImage}
+                      alt={getLocalizedText(card.nameAr, card.nameEn, card.nameFr)}
+                      className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110 group-hover:brightness-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-20 h-20 rounded-full bg-primary/90 flex items-center justify-center transition-transform duration-500 group-hover:scale-110 shadow-lg">
+                        <card.icon className="h-10 w-10 text-primary-foreground" />
+                      </div>
+                    </div>
+                    <div className="absolute bottom-4 start-4 end-4">
+                      <h3 className="text-xl font-bold text-white drop-shadow-lg">
+                        {getLocalizedText(card.nameAr, card.nameEn, card.nameFr)}
+                      </h3>
+                    </div>
                   </div>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <card.icon className="h-5 w-5 text-primary" />
-                      {getLocalizedText(card.nameAr, card.nameEn, card.nameFr)}
-                    </CardTitle>
-                    <CardDescription>
+                  <CardContent className="space-y-4 pt-4">
+                    <p className="text-sm text-muted-foreground">
                       {getLocalizedText(card.descAr, card.descEn, card.descFr)}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                    </p>
                     <ul className="space-y-2">
                       {card.features.map((feature, i) => (
                         <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -637,6 +653,13 @@ export default function Home() {
                 "Voyez la différence - résultats réels de nos clients satisfaits"
               )}
             </motion.p>
+            <motion.p variants={fadeInUp} className="text-sm text-white/50 mt-2">
+              {getLocalizedText(
+                "اسحب الشريط لمقارنة النتائج",
+                "Drag the slider to compare results",
+                "Faites glisser le curseur pour comparer"
+              )}
+            </motion.p>
           </motion.div>
 
           <motion.div
@@ -654,23 +677,59 @@ export default function Home() {
                 className="group"
               >
                 <div className="relative rounded-xl overflow-hidden shadow-2xl bg-black/20 backdrop-blur-sm">
-                  <div className="relative aspect-video overflow-hidden">
+                  <div className="relative aspect-video overflow-hidden select-none">
                     <img
                       src={comparison.image}
                       alt={getLocalizedText(comparison.titleAr, comparison.titleEn, comparison.titleFr)}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      className="w-full h-full object-cover"
+                      draggable={false}
                     />
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="w-0.5 h-full bg-white/40" />
+                    <div 
+                      className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent"
+                      style={{ 
+                        clipPath: `inset(0 ${100 - sliderPositions[comparison.id]}% 0 0)` 
+                      }}
+                    />
+                    <div 
+                      className="absolute top-0 bottom-0 w-1 bg-white shadow-lg cursor-ew-resize z-10"
+                      style={{ left: `${sliderPositions[comparison.id]}%`, transform: 'translateX(-50%)' }}
+                    >
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center">
+                        <div className="flex gap-0.5">
+                          <div className="w-0.5 h-3 bg-gray-400 rounded-full" />
+                          <div className="w-0.5 h-3 bg-gray-400 rounded-full" />
+                        </div>
+                      </div>
                     </div>
-                    <div className="absolute bottom-4 inset-x-4 flex justify-between">
-                      <Badge className="bg-red-500/90 text-white">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={sliderPositions[comparison.id]}
+                      onChange={(e) => handleSliderChange(comparison.id, parseInt(e.target.value))}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20"
+                      data-testid={`slider-before-after-${comparison.id}`}
+                    />
+                    <motion.div 
+                      initial={{ opacity: 0, x: -10 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.3 + index * 0.1 }}
+                      className="absolute top-3 start-3 z-10"
+                    >
+                      <Badge className="bg-[#22c55e] text-white shadow-lg">
                         {getLocalizedText("قبل", "Before", "Avant")}
                       </Badge>
-                      <Badge className="bg-green-500/90 text-white">
+                    </motion.div>
+                    <motion.div 
+                      initial={{ opacity: 0, x: 10 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.3 + index * 0.1 }}
+                      className="absolute top-3 end-3 z-10"
+                    >
+                      <Badge className="bg-primary text-primary-foreground shadow-lg">
                         {getLocalizedText("بعد", "After", "Après")}
                       </Badge>
-                    </div>
+                    </motion.div>
                   </div>
                   <div className="p-4 text-center">
                     <h3 className="text-lg font-semibold mb-1">

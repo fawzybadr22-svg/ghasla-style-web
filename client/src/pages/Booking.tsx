@@ -2,22 +2,23 @@ import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Car, Sparkles, MapPin, CreditCard, Check, ChevronRight, ChevronLeft } from "lucide-react";
+import { Car, Sparkles, MapPin, CreditCard, Check, ChevronRight, ChevronLeft, Loader2, Navigation, Calendar, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import type { ServicePackage } from "@shared/schema";
 
 const defaultPackages: ServicePackage[] = [
-  { id: "1", nameAr: "غسيل خارجي", nameEn: "Exterior Wash", nameFr: "Lavage Extérieur", descriptionAr: "", descriptionEn: "", descriptionFr: "", priceSedanKD: 3, priceSuvKD: 4, estimatedMinutes: 30, category: "exterior", isActive: true, createdAt: "" },
-  { id: "2", nameAr: "تنظيف داخلي", nameEn: "Interior Clean", nameFr: "Nettoyage Intérieur", descriptionAr: "", descriptionEn: "", descriptionFr: "", priceSedanKD: 5, priceSuvKD: 7, estimatedMinutes: 45, category: "interior", isActive: true, createdAt: "" },
-  { id: "3", nameAr: "غسيل كامل", nameEn: "Full Wash", nameFr: "Lavage Complet", descriptionAr: "", descriptionEn: "", descriptionFr: "", priceSedanKD: 7, priceSuvKD: 10, estimatedMinutes: 60, category: "full", isActive: true, createdAt: "" },
-  { id: "4", nameAr: "VIP / تفصيلي", nameEn: "VIP / Detailing", nameFr: "VIP / Détaillage", descriptionAr: "", descriptionEn: "", descriptionFr: "", priceSedanKD: 15, priceSuvKD: 20, estimatedMinutes: 120, category: "vip", isActive: true, createdAt: "" },
+  { id: "1", nameAr: "غسيل خارجي", nameEn: "Exterior Wash", nameFr: "Lavage Extérieur", descriptionAr: "", descriptionEn: "", descriptionFr: "", priceSedanKD: 3, priceSuvKD: 4, estimatedMinutes: 30, category: "exterior", isActive: true, createdAt: new Date() },
+  { id: "2", nameAr: "تنظيف داخلي", nameEn: "Interior Clean", nameFr: "Nettoyage Intérieur", descriptionAr: "", descriptionEn: "", descriptionFr: "", priceSedanKD: 5, priceSuvKD: 7, estimatedMinutes: 45, category: "interior", isActive: true, createdAt: new Date() },
+  { id: "3", nameAr: "غسيل كامل", nameEn: "Full Wash", nameFr: "Lavage Complet", descriptionAr: "", descriptionEn: "", descriptionFr: "", priceSedanKD: 7, priceSuvKD: 10, estimatedMinutes: 60, category: "full", isActive: true, createdAt: new Date() },
+  { id: "4", nameAr: "VIP / تفصيلي", nameEn: "VIP / Detailing", nameFr: "VIP / Détaillage", descriptionAr: "", descriptionEn: "", descriptionFr: "", priceSedanKD: 15, priceSuvKD: 20, estimatedMinutes: 120, category: "vip", isActive: true, createdAt: new Date() },
 ];
 
 
@@ -32,6 +33,8 @@ export default function Booking() {
   
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationDetected, setLocationDetected] = useState(false);
   const [formData, setFormData] = useState({
     carType: "sedan" as "sedan" | "suv" | "other",
     carDetails: "",
@@ -74,6 +77,93 @@ export default function Booking() {
 
   const getLocalizedText = (ar: string, en: string, fr: string) => {
     return i18n.language === "ar" ? ar : i18n.language === "fr" ? fr : en;
+  };
+
+  const handleGetLocation = async () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: getLocalizedText("خطأ", "Error", "Erreur"),
+        description: getLocalizedText(
+          "المتصفح لا يدعم تحديد الموقع",
+          "Browser doesn't support geolocation",
+          "Le navigateur ne prend pas en charge la géolocalisation"
+        ),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLocating(true);
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+      
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=${i18n.language}`
+        );
+        const data = await response.json();
+        
+        if (data.display_name) {
+          setFormData(prev => ({
+            ...prev,
+            address: data.display_name.split(",").slice(0, 3).join(","),
+          }));
+          setLocationDetected(true);
+          toast({
+            title: getLocalizedText("تم تحديد الموقع", "Location Detected", "Emplacement Détecté"),
+            description: getLocalizedText(
+              "تم تحديد موقعك تلقائياً",
+              "Your location was detected automatically",
+              "Votre emplacement a été détecté automatiquement"
+            ),
+          });
+        }
+      } catch {
+        setFormData(prev => ({
+          ...prev,
+          address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+        }));
+        setLocationDetected(true);
+      }
+    } catch (error: any) {
+      let message = getLocalizedText(
+        "فشل تحديد الموقع",
+        "Failed to get location",
+        "Échec de la géolocalisation"
+      );
+      if (error.code === 1) {
+        message = getLocalizedText(
+          "تم رفض إذن الموقع",
+          "Location permission denied",
+          "Permission de localisation refusée"
+        );
+      }
+      toast({
+        title: getLocalizedText("خطأ", "Error", "Erreur"),
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
+  const getMinTime = () => {
+    const now = new Date();
+    if (formData.date === now.toISOString().split("T")[0]) {
+      const hours = now.getHours().toString().padStart(2, "0");
+      const minutes = now.getMinutes().toString().padStart(2, "0");
+      return `${hours}:${minutes}`;
+    }
+    return "06:00";
   };
 
   const steps = [
@@ -243,60 +333,105 @@ export default function Booking() {
 
             {/* Step 3: Location & Time */}
             {step === 3 && (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="space-y-2">
-                  <Label>{t("booking.area")}</Label>
-                  <RadioGroup
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    {getLocalizedText("المنطقة", "Area", "Zone")}
+                  </Label>
+                  <Select
                     value={formData.area}
                     onValueChange={(value) => setFormData({ ...formData, area: value })}
-                    className="grid grid-cols-2 md:grid-cols-3 gap-2"
                   >
-                    {displayAreas.map((area) => (
-                      <Label
-                        key={area}
-                        className={`flex items-center justify-center p-3 rounded-lg border cursor-pointer transition-colors ${
-                          formData.area === area ? "border-primary bg-primary/5" : "border-muted hover:border-primary/50"
-                        }`}
-                      >
-                        <RadioGroupItem value={area} className="sr-only" />
-                        {area}
-                      </Label>
-                    ))}
-                  </RadioGroup>
+                    <SelectTrigger data-testid="select-area">
+                      <SelectValue placeholder={getLocalizedText("اختر المنطقة", "Select area", "Sélectionner la zone")} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      {displayAreas.map((area) => (
+                        <SelectItem key={area} value={area}>
+                          {area}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>{t("booking.address")}</Label>
-                  <Input
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder={getLocalizedText("العنوان التفصيلي", "Detailed address", "Adresse détaillée")}
-                    required
-                    data-testid="input-address"
-                  />
+                  <Label className="flex items-center gap-2">
+                    <Navigation className="h-4 w-4 text-primary" />
+                    {getLocalizedText("العنوان التفصيلي", "Detailed Address", "Adresse Détaillée")}
+                  </Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        value={formData.address}
+                        onChange={(e) => {
+                          setFormData({ ...formData, address: e.target.value });
+                          setLocationDetected(false);
+                        }}
+                        placeholder={getLocalizedText("أدخل العنوان أو اضغط على زر الموقع", "Enter address or click location button", "Entrez l'adresse ou cliquez sur le bouton de localisation")}
+                        required
+                        data-testid="input-address"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleGetLocation}
+                      disabled={isLocating}
+                      data-testid="button-get-location"
+                      title={getLocalizedText("تحديد الموقع تلقائياً", "Auto-detect location", "Détecter l'emplacement")}
+                    >
+                      {isLocating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Navigation className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  {locationDetected && (
+                    <p className="text-sm text-green-600 flex items-center gap-1">
+                      <Check className="h-3 w-3" />
+                      {getLocalizedText("تم تحديد موقعك تلقائياً", "Location detected automatically", "Emplacement détecté automatiquement")}
+                    </p>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>{t("booking.date")}</Label>
+                    <Label className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-primary" />
+                      {getLocalizedText("التاريخ", "Date", "Date")}
+                    </Label>
                     <Input
                       type="date"
                       value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, date: e.target.value, time: "" })}
                       min={new Date().toISOString().split("T")[0]}
                       required
+                      className="cursor-pointer"
                       data-testid="input-date"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t("booking.time")}</Label>
+                    <Label className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-primary" />
+                      {getLocalizedText("الوقت", "Time", "Heure")}
+                    </Label>
                     <Input
                       type="time"
                       value={formData.time}
                       onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                      min={getMinTime()}
+                      max="22:00"
                       required
+                      className="cursor-pointer"
                       data-testid="input-time"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      {getLocalizedText("من 6 صباحاً إلى 10 مساءً", "6:00 AM to 10:00 PM", "De 6h00 à 22h00")}
+                    </p>
                   </div>
                 </div>
               </div>

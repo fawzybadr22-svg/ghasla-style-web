@@ -1,5 +1,19 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  PhoneAuthProvider,
+  linkWithCredential,
+  type User as FirebaseUser,
+  type ConfirmationResult
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -29,4 +43,24 @@ export const logOut = () => signOut(auth);
 export const onAuthChange = (callback: (user: FirebaseUser | null) => void) => 
   onAuthStateChanged(auth, callback);
 
-export type { FirebaseUser };
+export const setupRecaptcha = (buttonId: string) => {
+  const recaptchaVerifier = new RecaptchaVerifier(auth, buttonId, {
+    size: 'invisible',
+    callback: () => {},
+  });
+  return recaptchaVerifier;
+};
+
+export const sendPhoneOTP = async (phoneNumber: string, recaptchaVerifier: RecaptchaVerifier): Promise<ConfirmationResult> => {
+  return signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
+};
+
+export const linkPhoneToAccount = async (verificationId: string, otp: string) => {
+  const credential = PhoneAuthProvider.credential(verificationId, otp);
+  if (auth.currentUser) {
+    return linkWithCredential(auth.currentUser, credential);
+  }
+  throw new Error("No user logged in");
+};
+
+export type { FirebaseUser, ConfirmationResult };
