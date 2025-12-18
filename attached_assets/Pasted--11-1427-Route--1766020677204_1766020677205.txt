@@ -1,0 +1,19 @@
+الوكيل اشتغل وعدّل في الكود (11 عملية، +1427 سطر)، لكن لسه مفيش Route متعرّف للصفحة الرئيسية، عشان كده الـ Preview بيعرض **Page Not Found 404**.[1]
+
+دلوقتي اعمل التالي داخل Replit في مربع الـ Agent:
+
+> The Firebase secrets are configured and the backend is running.  
+> However, the preview only shows “Page Not Found 404 – Did you forget to add the page to the router?”.  
+> Please now:
+> 1) Generate the React client inside the `client` folder with `src/main.tsx` and `src/App.tsx`.  
+> 2) Set up React Router so that the root route `/` renders a Home page component for the Ghasla Style landing page (no 404).  
+> 3) Implement at least a basic Home page with a header, hero section, and navigation links to Services, Online Booking, Loyalty/Friends Club, and Admin Login.
+
+بعد ما يخلص:
+
+- اعمل Refresh للـ Preview.  
+- لو ظهرت صفحة Home أو أي واجهة، صورها لي.  
+- لو مازال 404 أو ظهر Error جديد، انسخ النص الجديد من الكونسول أو Preview هنا.
+
+[1](https://www.dhiwise.com/post/your-go-to-guide-on-how-to-deploy-flutter-web-app)
+[2](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/images/127947869/8426217c-7f65-46bc-8120-08af1d29ccf5/tnzyl-34.jpg?AWSAccessKeyId=ASIA2F3EMEYEVSSFQR76&Signature=xarP3l7z5Ky%2BG2G4hOLLbvd2akw%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEMD%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIB9Ng%2F4s%2Fx9Tzum0mjm8XMEO4wQyD%2FtyWdg5vw%2FE2VVtAiEA0L0uJ%2Fo7AF6WyPtsmEFBLebjn6wGvUZcae2PP8bfgW8q%2FAQIif%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw2OTk3NTMzMDk3MDUiDFGygTDh7A2%2BQSZ1pSrQBJtteiRNCz9XUKN%2Frz0NjYDWGXqaiZKASXaHGMuUeGkr2seI7ITRGAcRTIKjJdOISej5r3i51L6IE7xpr8Rd7jvIj0BJopmU9AE6%2B5hufTbw%2BUHoc64m8sYgDRAMDbpVJsNRo6BKQN%2FbqyfeFNjrGFH4iSOu%2BDo0uDP6x6HTrij3IL8dXPlOiaDFS9fG%2FbK%2FHkCphwLnoXW%2FA4b0ej4pFdI5Vaq1V12%2Bvsdvd8TeJPDT4IVaPpRmM3Xqw%2Fa%2FYdigKAj7gqGHGvdlpFSOMn3U2Ux2yWrc2hT9kEstpryOfaxFJXhmBsvNWgtt5j6wyjLR6BqWa9w5tAaJ7UdZwly2BMEkwcYEXozg9FP3jJq%2FWdlXpdpB37waEVEXD3rHFPtph0gCxzionwMnwqvH%2BUEyVPh6DGJKUHKvDxheJy3YXtvPYc6OrQnKjvJ5Z8vw2ccix8Y6%2B0f61EftujYvgi5OkUrEeSBOLeE7Aj2H2z6m968VSg89Y6ZDJqzlLdx3W2KZI8ct3fFQkSq5tzQYRnVfV6BCBJOgsJi16fTT9riYy%2BHFFAsEQ%2BYdhS2JqSv%2BpRtiP7xnN6J%2FXoaSjYwJpu%2B7q8ehE06zJ4dIQrwapUaozJsHVXb3du91eMq%2Bpa8JIPDcsRByNeWbM2ysVBZQ4LFtV%2Bbkt02EOtfo8iYjIr1hYJSgjJ36a3xpP1iGL0TUd2%2BVdL2YhONzRfVSAa1k7e0BKIANsb7I05u%2BAaxJS1bgXsdxt28frd3PoGjOSWNnRMV4kyVKrplHGWn9pT90fQiaqIMwx4WNygY6mAHnPRGxVqYXgTwTpRD%2Fyk9vDpkAEd5zlSDe8%2Bf13WQZiwJhFxjGN%2FY%2FpoYb%2BzouoDS0SfCL%2F5aO6KdM3Lz%2BTyOMW2kKsupns12Cx05EFOJX5MoeCaOMIPj0uCUNDNUzy0QJlvwXWgGOyrhsUnopa7VNku3XBH3l5y9QZRugtS0hOwHJ6hmWKhXkHvW7sG9EYQt1uT%2BvzMayxw%3D%3D&Expires=1766017588)

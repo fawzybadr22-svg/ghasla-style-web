@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Phone, Mail, MapPin } from "lucide-react";
-import { SiWhatsapp, SiInstagram, SiTwitter } from "react-icons/si";
+import { SiWhatsapp, SiInstagram, SiX } from "react-icons/si";
 
 export function Footer() {
   const { t, i18n } = useTranslation();
@@ -57,7 +57,7 @@ export function Footer() {
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-background transition-transform hover:scale-105"
                 data-testid="social-twitter"
               >
-                <SiTwitter className="h-5 w-5" />
+                <SiX className="h-5 w-5" />
               </a>
             </div>
           </div>
