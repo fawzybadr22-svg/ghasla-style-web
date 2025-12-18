@@ -4,12 +4,14 @@ import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Car, Sparkles, Crown, Calendar, MapPin, Clock, Shield, Star, 
-  Users, Truck, Phone, X, Check, ChevronDown, MessageCircle
+  Users, Truck, Phone, X, Check, ChevronDown, MessageCircle, Search, Package
 } from "lucide-react";
 import { SiWhatsapp } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import heroImage from "@assets/generated_images/luxury_car_with_water_droplets.png";
 import fleetImage from "@assets/generated_images/branded_mobile_wash_van.png";
@@ -50,13 +52,83 @@ const scaleIn = {
   visible: { opacity: 1, scale: 1, transition: { duration: 0.5 } }
 };
 
+// Order tracking types
+interface TrackedOrder {
+  id: string;
+  status: string;
+  carType: string;
+  preferredDate: string;
+  preferredTime: string;
+  area: string;
+  createdAt: string;
+  completedAt: string | null;
+  assignedDriver: string | null;
+  serviceName: { ar: string; en: string; fr: string } | null;
+}
+
 export default function Home() {
   const { t, i18n } = useTranslation();
+  const { user } = useAuth();
   const [showOffer, setShowOffer] = useState(false);
   const [carType, setCarType] = useState<"sedan" | "suv">("sedan");
   const [service, setService] = useState("full");
   const [scheduleType, setScheduleType] = useState<"now" | "later">("now");
   const [sliderPositions, setSliderPositions] = useState<{[key: number]: number}>({1: 50, 2: 50, 3: 50});
+  
+  // Order tracking state
+  const [trackingId, setTrackingId] = useState("");
+  const [trackedOrder, setTrackedOrder] = useState<TrackedOrder | null>(null);
+  const [trackingError, setTrackingError] = useState("");
+  const [isTracking, setIsTracking] = useState(false);
+
+  const handleTrackOrder = async () => {
+    if (!trackingId.trim()) {
+      setTrackingError(getLocalizedText(
+        "الرجاء إدخال رقم الطلب",
+        "Please enter an order ID",
+        "Veuillez entrer un numéro de commande"
+      ));
+      return;
+    }
+    
+    setIsTracking(true);
+    setTrackingError("");
+    setTrackedOrder(null);
+    
+    try {
+      const response = await fetch(`/api/orders/track/${trackingId.trim()}`);
+      if (!response.ok) {
+        throw new Error("not_found");
+      }
+      const data = await response.json();
+      setTrackedOrder(data);
+    } catch (error) {
+      setTrackingError(getLocalizedText(
+        "الطلب غير موجود - يرجى التحقق من رقم الطلب أو تسجيل الدخول إلى حسابك",
+        "Order not found – please check your ID or log in to your account",
+        "Commande non trouvée – veuillez vérifier votre numéro ou vous connecter"
+      ));
+    } finally {
+      setIsTracking(false);
+    }
+  };
+
+  const getStatusStep = (status: string) => {
+    const steps = ["pending", "assigned", "in_progress", "completed"];
+    return steps.indexOf(status) + 1;
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, { ar: string; en: string; fr: string }> = {
+      pending: { ar: "قيد الانتظار", en: "Pending", fr: "En attente" },
+      assigned: { ar: "تم التخصيص", en: "Assigned", fr: "Assigné" },
+      in_progress: { ar: "قيد التنفيذ", en: "In Progress", fr: "En cours" },
+      completed: { ar: "مكتمل", en: "Completed", fr: "Terminé" },
+      cancelled: { ar: "ملغي", en: "Cancelled", fr: "Annulé" },
+    };
+    const label = labels[status] || labels.pending;
+    return getLocalizedText(label.ar, label.en, label.fr);
+  };
 
   const handleSliderChange = (id: number, value: number) => {
     setSliderPositions(prev => ({ ...prev, [id]: value }));
@@ -445,6 +517,180 @@ export default function Home() {
               </motion.a>
             </motion.div>
           </div>
+        </div>
+      </section>
+
+      {/* Track Your Order Section */}
+      <section className="py-16 bg-gradient-to-br from-muted/50 to-muted/30">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            variants={staggerContainer}
+            className="max-w-2xl mx-auto"
+          >
+            <motion.div variants={fadeInUp} className="text-center mb-8">
+              <h2 className="text-3xl md:text-4xl font-bold mb-3">
+                {getLocalizedText("تتبع طلبك", "Track Your Order", "Suivre Votre Commande")}
+              </h2>
+              <p className="text-muted-foreground text-lg">
+                تتبع حالة طلب غسلتك خطوة بخطوة برقم الطلب أو من حسابك مباشرة
+              </p>
+            </motion.div>
+
+            <motion.div variants={fadeInUp}>
+              <Card className="shadow-lg">
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex-1 relative">
+                      <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Input
+                        placeholder={getLocalizedText("أدخل رقم الطلب", "Enter Order ID", "Entrez le numéro de commande")}
+                        value={trackingId}
+                        onChange={(e) => {
+                          setTrackingId(e.target.value);
+                          setTrackingError("");
+                        }}
+                        onKeyDown={(e) => e.key === "Enter" && handleTrackOrder()}
+                        className="ps-10"
+                        data-testid="input-tracking-id"
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleTrackOrder} 
+                      disabled={isTracking}
+                      className="min-w-[120px]"
+                      data-testid="button-track-order"
+                    >
+                      {isTracking ? (
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          className="h-4 w-4 border-2 border-white border-t-transparent rounded-full"
+                        />
+                      ) : (
+                        getLocalizedText("تتبع الآن", "Track Now", "Suivre")
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Error Message */}
+                  {trackingError && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-destructive text-sm text-center"
+                    >
+                      {trackingError}
+                    </motion.p>
+                  )}
+
+                  {/* Tracked Order Result */}
+                  <AnimatePresence>
+                    {trackedOrder && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-4 p-4 rounded-lg bg-muted/50 border space-y-4">
+                          {/* Order Info */}
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <Package className="h-5 w-5 text-primary" />
+                              <span className="font-medium">
+                                {trackedOrder.serviceName 
+                                  ? getLocalizedText(
+                                      trackedOrder.serviceName.ar,
+                                      trackedOrder.serviceName.en,
+                                      trackedOrder.serviceName.fr
+                                    )
+                                  : "Service"}
+                              </span>
+                            </div>
+                            <Badge variant={trackedOrder.status === "completed" ? "default" : trackedOrder.status === "cancelled" ? "destructive" : "secondary"}>
+                              {getStatusLabel(trackedOrder.status)}
+                            </Badge>
+                          </div>
+
+                          {/* Order Details */}
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div className="flex items-center gap-2">
+                              <Car className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-muted-foreground">
+                                {trackedOrder.carType === "suv" ? "SUV" : getLocalizedText("سيدان", "Sedan", "Berline")}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-muted-foreground">{trackedOrder.area}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-muted-foreground">{trackedOrder.preferredDate}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-muted-foreground">{trackedOrder.preferredTime}</span>
+                            </div>
+                          </div>
+
+                          {/* Progress Stepper */}
+                          {trackedOrder.status !== "cancelled" && (
+                            <div className="pt-4">
+                              <div className="flex items-center justify-between relative">
+                                <div className="absolute top-3 start-0 end-0 h-1 bg-muted rounded-full">
+                                  <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${Math.min((getStatusStep(trackedOrder.status) / 4) * 100, 100)}%` }}
+                                    transition={{ duration: 0.5, delay: 0.2 }}
+                                    className="h-full bg-primary rounded-full"
+                                  />
+                                </div>
+                                {["pending", "assigned", "in_progress", "completed"].map((step, index) => (
+                                  <div key={step} className="relative z-10 flex flex-col items-center">
+                                    <div
+                                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                                        getStatusStep(trackedOrder.status) > index
+                                          ? "bg-primary text-white"
+                                          : "bg-muted border-2 border-muted-foreground/30 text-muted-foreground"
+                                      }`}
+                                    >
+                                      {getStatusStep(trackedOrder.status) > index ? (
+                                        <Check className="h-3 w-3" />
+                                      ) : (
+                                        index + 1
+                                      )}
+                                    </div>
+                                    <span className="text-xs text-muted-foreground mt-1 hidden sm:block">
+                                      {getStatusLabel(step)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* View All Orders Link (for logged-in users) */}
+                  {user && (
+                    <motion.div variants={fadeIn} className="text-center pt-2">
+                      <Link href="/track-order">
+                        <Button variant="link" className="text-primary" data-testid="link-view-all-orders">
+                          {getLocalizedText("عرض جميع طلباتي", "View all my orders", "Voir toutes mes commandes")}
+                        </Button>
+                      </Link>
+                    </motion.div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
