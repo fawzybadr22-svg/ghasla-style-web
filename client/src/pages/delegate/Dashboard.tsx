@@ -5,7 +5,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { 
   LayoutDashboard, Package, ClipboardList, Clock, MapPin, Phone, 
   User, Car, CheckCircle, Play, Navigation, XCircle, Shield,
-  BarChart3, Calendar, DollarSign, TrendingUp, Settings, RefreshCw
+  BarChart3, Calendar, DollarSign, TrendingUp, Settings, RefreshCw,
+  Star, Camera, MapPinned
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +39,9 @@ interface DelegateStats {
   totalRevenue: number;
   period: string;
   activeOrdersCount: number;
+  avgCompletionMinutes: number;
+  avgRating: number;
+  totalRatings: number;
 }
 
 export default function DelegateDashboard() {
@@ -204,6 +208,61 @@ export default function DelegateDashboard() {
       toast({ title: error.message, variant: "destructive" });
     },
   });
+
+  const updateLocationMutation = useMutation({
+    mutationFn: async ({ latitude, longitude }: { latitude: number; longitude: number }) => {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/delegate/location", {
+        method: "PATCH",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ latitude, longitude }),
+      });
+      if (!res.ok) throw new Error("Failed to update location");
+      return res.json();
+    },
+  });
+
+  const uploadPhotoMutation = useMutation({
+    mutationFn: async ({ orderId, beforePhotoUrl, afterPhotoUrl }: { 
+      orderId: string; 
+      beforePhotoUrl?: string; 
+      afterPhotoUrl?: string;
+    }) => {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/delegate/orders/${orderId}/photos`, {
+        method: "PATCH",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ beforePhotoUrl, afterPhotoUrl }),
+      });
+      if (!res.ok) throw new Error("Failed to upload photo");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/delegate/orders/current"] });
+      toast({ title: getLocalizedText("تم رفع الصورة", "Photo Uploaded", "Photo Téléchargée") });
+    },
+    onError: (error: Error) => {
+      toast({ title: error.message, variant: "destructive" });
+    },
+  });
+
+  // Start location sharing when going on the way
+  const startLocationSharing = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.watchPosition(
+        (position) => {
+          updateLocationMutation.mutate({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+      );
+    }
+  };
 
   if (loading || profileLoading) {
     return (
@@ -568,6 +627,64 @@ export default function DelegateDashboard() {
                   </div>
                 </div>
 
+                {/* Photo upload section for in_progress orders */}
+                {order.status === "in_progress" && (
+                  <div className="space-y-3 pt-4 border-t">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Camera className="h-4 w-4" />
+                      {getLocalizedText("صور الخدمة (اختياري)", "Service Photos (Optional)", "Photos du Service (Optionnel)")}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {!order.beforePhotoUrl ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const url = prompt(getLocalizedText("أدخل رابط صورة قبل الخدمة", "Enter before photo URL", "Entrez l'URL de la photo avant"));
+                            if (url) uploadPhotoMutation.mutate({ orderId: order.id, beforePhotoUrl: url });
+                          }}
+                          disabled={uploadPhotoMutation.isPending}
+                          data-testid={`button-upload-before-${order.id}`}
+                        >
+                          <Camera className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                          {getLocalizedText("صورة قبل", "Before Photo", "Photo Avant")}
+                        </Button>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">
+                          {getLocalizedText("قبل: تم الرفع", "Before: Uploaded", "Avant: Téléchargé")}
+                        </Badge>
+                      )}
+                      {!order.afterPhotoUrl ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const url = prompt(getLocalizedText("أدخل رابط صورة بعد الخدمة", "Enter after photo URL", "Entrez l'URL de la photo après"));
+                            if (url) uploadPhotoMutation.mutate({ orderId: order.id, afterPhotoUrl: url });
+                          }}
+                          disabled={uploadPhotoMutation.isPending}
+                          data-testid={`button-upload-after-${order.id}`}
+                        >
+                          <Camera className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                          {getLocalizedText("صورة بعد", "After Photo", "Photo Après")}
+                        </Button>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">
+                          {getLocalizedText("بعد: تم الرفع", "After: Uploaded", "Après: Téléchargé")}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* On the way indicator with location sharing */}
+                {order.status === "on_the_way" && (
+                  <div className="flex items-center gap-2 pt-4 border-t text-sm text-muted-foreground">
+                    <MapPinned className="h-4 w-4 text-primary animate-pulse" />
+                    {getLocalizedText("يتم مشاركة موقعك", "Sharing your location", "Partage de votre position")}
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2 flex-wrap pt-4 border-t">
                   <Button
                     variant="outline"
@@ -587,11 +704,18 @@ export default function DelegateDashboard() {
                   )}
                   {getNextAction(order.status) && (
                     <Button
-                      onClick={() => updateStatusMutation.mutate({ 
-                        orderId: order.id, 
-                        status: getNextAction(order.status)!.action,
-                        isPaid: getNextAction(order.status)!.action === "completed" ? true : undefined,
-                      })}
+                      onClick={() => {
+                        const nextAction = getNextAction(order.status)!.action;
+                        // Start location sharing when going "on the way"
+                        if (nextAction === "on_the_way") {
+                          startLocationSharing();
+                        }
+                        updateStatusMutation.mutate({ 
+                          orderId: order.id, 
+                          status: nextAction,
+                          isPaid: nextAction === "completed" ? true : undefined,
+                        });
+                      }}
                       disabled={updateStatusMutation.isPending}
                       data-testid={`button-next-${order.id}`}
                     >
@@ -676,7 +800,7 @@ export default function DelegateDashboard() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -719,6 +843,8 @@ export default function DelegateDashboard() {
                 </p>
               </CardContent>
             </Card>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -730,6 +856,37 @@ export default function DelegateDashboard() {
                 <div className="text-2xl font-bold">
                   {stats?.completedOrdersCount ? ((stats.totalRevenue || 0) / stats.completedOrdersCount).toFixed(2) : "0.00"} KD
                 </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {getLocalizedText("متوسط وقت الإنجاز", "Avg Completion Time", "Temps Moyen")}
+                </CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats?.avgCompletionMinutes || 0} min</div>
+                <p className="text-xs text-muted-foreground">
+                  {getLocalizedText("لكل طلب", "per order", "par commande")}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {getLocalizedText("متوسط التقييم", "Avg Rating", "Note Moyenne")}
+                </CardTitle>
+                <Star className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold flex items-center gap-1">
+                  {stats?.avgRating || 0}
+                  <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {stats?.totalRatings || 0} {getLocalizedText("تقييم", "ratings", "évaluations")}
+                </p>
               </CardContent>
             </Card>
           </div>

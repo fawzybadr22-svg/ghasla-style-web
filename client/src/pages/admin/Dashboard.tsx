@@ -5,7 +5,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { 
   LayoutDashboard, Package, ShoppingBag, Users, Gift, FileText, 
   BarChart3, Shield, Settings, ChevronRight, TrendingUp, Pencil, Trash2,
-  Plus, Ban, CheckCircle, Download, Eye, X, Save
+  Plus, Ban, CheckCircle, Download, Eye, X, Save, Camera, ImageIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -361,11 +361,34 @@ export default function AdminDashboard() {
                               <div className="flex items-center gap-2 mb-1">
                                 {getStatusBadge(order.status)}
                                 <span className="text-sm text-muted-foreground">#{order.id.slice(0, 8)}</span>
+                                {(order.beforePhotoUrl || order.afterPhotoUrl) && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    <Camera className="h-3 w-3 ltr:mr-1 rtl:ml-1" />
+                                    {getLocalizedText("صور", "Photos", "Photos")}
+                                  </Badge>
+                                )}
                               </div>
                               <p className="font-medium">{order.area} - {order.address}</p>
                               <p className="text-sm text-muted-foreground">
                                 {order.preferredDate} {order.preferredTime}
                               </p>
+                              {/* Service Photos Preview */}
+                              {(order.beforePhotoUrl || order.afterPhotoUrl) && (
+                                <div className="flex gap-4 mt-2">
+                                  {order.beforePhotoUrl && (
+                                    <a href={order.beforePhotoUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                                      <ImageIcon className="h-3 w-3" />
+                                      {getLocalizedText("قبل", "Before", "Avant")}
+                                    </a>
+                                  )}
+                                  {order.afterPhotoUrl && (
+                                    <a href={order.afterPhotoUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                                      <ImageIcon className="h-3 w-3" />
+                                      {getLocalizedText("بعد", "After", "Après")}
+                                    </a>
+                                  )}
+                                </div>
+                              )}
                             </div>
                             <div className="flex items-center gap-3">
                               <span className="font-bold text-primary">{order.priceKD} KD</span>
@@ -379,6 +402,7 @@ export default function AdminDashboard() {
                                 <SelectContent>
                                   <SelectItem value="pending">{getLocalizedText("معلق", "Pending", "En Attente")}</SelectItem>
                                   <SelectItem value="assigned">{getLocalizedText("تم التعيين", "Assigned", "Assigné")}</SelectItem>
+                                  <SelectItem value="on_the_way">{getLocalizedText("في الطريق", "On The Way", "En Route")}</SelectItem>
                                   <SelectItem value="in_progress">{getLocalizedText("قيد التنفيذ", "In Progress", "En Cours")}</SelectItem>
                                   <SelectItem value="completed">{getLocalizedText("مكتمل", "Completed", "Terminé")}</SelectItem>
                                   <SelectItem value="cancelled">{getLocalizedText("ملغي", "Cancelled", "Annulé")}</SelectItem>

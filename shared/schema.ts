@@ -245,6 +245,21 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: tru
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
 
+// Order Ratings table
+export const orderRatings = pgTable("order_ratings", {
+  id: text("id").primaryKey(),
+  orderId: text("order_id").notNull().references(() => orders.id),
+  customerId: text("customer_id").notNull().references(() => users.id),
+  delegateId: text("delegate_id").notNull().references(() => users.id),
+  rating: integer("rating").notNull(),
+  comment: text("comment"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertOrderRatingSchema = createInsertSchema(orderRatings).omit({ id: true, createdAt: true });
+export type InsertOrderRating = z.infer<typeof insertOrderRatingSchema>;
+export type OrderRating = typeof orderRatings.$inferSelect;
+
 // Kuwait Areas for service validation
 export const kuwaitAreas = [
   "Ahmadi", "Farwaniya", "Hawalli", "Jahra", "Mubarak Al-Kabeer", "Capital",

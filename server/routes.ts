@@ -1738,7 +1738,7 @@ export async function registerRoutes(
     }
   });
 
-  // Get delegate statistics
+  // Get delegate statistics (enhanced with completion time and ratings)
   app.get("/api/delegate/stats", requireDelegate, async (req: AuthenticatedRequest, res) => {
     try {
       const delegateId = req.user?.uid;
@@ -1749,6 +1749,7 @@ export async function registerRoutes(
       const { period } = req.query; // today, week, month
       
       const assignedOrders = await storage.getOrders({ assignedDriver: delegateId });
+      const ratings = await storage.getOrderRatingsByDelegate(delegateId);
       
       // Filter by period
       const now = new Date();
@@ -1774,6 +1775,24 @@ export async function registerRoutes(
       const completedOrders = periodOrders.filter(o => o.status === "completed");
       const totalRevenue = completedOrders.reduce((sum, o) => sum + (o.finalPriceKD || o.priceKD), 0);
       
+      // Calculate average completion time (from startedAt to completedAt)
+      const ordersWithTime = completedOrders.filter(o => o.startedAt && o.completedAt);
+      let avgCompletionMinutes = 0;
+      if (ordersWithTime.length > 0) {
+        const totalMinutes = ordersWithTime.reduce((sum, o) => {
+          const started = new Date(o.startedAt!).getTime();
+          const completed = new Date(o.completedAt!).getTime();
+          return sum + (completed - started) / 60000;
+        }, 0);
+        avgCompletionMinutes = Math.round(totalMinutes / ordersWithTime.length);
+      }
+      
+      // Calculate average rating
+      const periodRatings = ratings.filter(r => new Date(r.createdAt) >= startDate);
+      const avgRating = periodRatings.length > 0 
+        ? periodRatings.reduce((sum, r) => sum + r.rating, 0) / periodRatings.length 
+        : 0;
+      
       res.json({
         completedOrdersCount: completedOrders.length,
         totalRevenue,
@@ -1781,6 +1800,142 @@ export async function registerRoutes(
         activeOrdersCount: assignedOrders.filter(o => 
           o.status === "assigned" || o.status === "on_the_way" || o.status === "in_progress"
         ).length,
+        avgCompletionMinutes,
+        avgRating: Math.round(avgRating * 10) / 10,
+        totalRatings: periodRatings.length,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update delegate location
+  app.patch("/api/delegate/location", requireDelegate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const delegateId = req.user?.uid;
+      if (!delegateId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      const { latitude, longitude } = req.body;
+      
+      if (typeof latitude !== "number" || typeof longitude !== "number") {
+        return res.status(400).json({ error: "Invalid coordinates" });
+      }
+      
+      const updated = await storage.updateUser(delegateId, {
+        currentLatitude: latitude,
+        currentLongitude: longitude,
+      });
+      
+      res.json({ success: true, location: { latitude, longitude } });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Upload order photos (before/after)
+  app.patch("/api/delegate/orders/:id/photos", requireDelegate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const delegateId = req.user?.uid;
+      if (!delegateId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      const { beforePhotoUrl, afterPhotoUrl } = req.body;
+      
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      
+      if (order.assignedDriver !== delegateId) {
+        return res.status(403).json({ error: "Not authorized to update this order" });
+      }
+      
+      const updateData: any = {};
+      if (beforePhotoUrl) updateData.beforePhotoUrl = beforePhotoUrl;
+      if (afterPhotoUrl) updateData.afterPhotoUrl = afterPhotoUrl;
+      
+      const updated = await storage.updateOrder(req.params.id, updateData);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Customer rating for completed order
+  app.post("/api/orders/:id/rating", async (req, res) => {
+    try {
+      const { customerId, rating, comment } = req.body;
+      
+      if (!customerId || !rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ error: "Invalid rating data" });
+      }
+      
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      
+      if (order.status !== "completed") {
+        return res.status(400).json({ error: "Can only rate completed orders" });
+      }
+      
+      if (order.customerId !== customerId) {
+        return res.status(403).json({ error: "Not authorized to rate this order" });
+      }
+      
+      if (!order.assignedDriver) {
+        return res.status(400).json({ error: "Order has no assigned delegate" });
+      }
+      
+      // Check if already rated
+      const existingRating = await storage.getOrderRating(order.id);
+      if (existingRating) {
+        return res.status(400).json({ error: "Order already rated" });
+      }
+      
+      const newRating = await storage.createOrderRating({
+        orderId: order.id,
+        customerId,
+        delegateId: order.assignedDriver,
+        rating,
+        comment,
+      });
+      
+      res.json(newRating);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Get delegate location for admin/customer tracking
+  app.get("/api/orders/:id/delegate-location", async (req, res) => {
+    try {
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      
+      if (!order.assignedDriver) {
+        return res.status(400).json({ error: "No delegate assigned" });
+      }
+      
+      if (order.status !== "on_the_way") {
+        return res.json({ tracking: false, message: "Delegate not en route" });
+      }
+      
+      const delegate = await storage.getUser(order.assignedDriver);
+      if (!delegate) {
+        return res.status(404).json({ error: "Delegate not found" });
+      }
+      
+      res.json({
+        tracking: true,
+        latitude: delegate.currentLatitude,
+        longitude: delegate.currentLongitude,
+        delegateName: delegate.name,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

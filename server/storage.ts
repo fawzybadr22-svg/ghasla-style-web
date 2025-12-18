@@ -3,13 +3,13 @@ import { eq, desc, and, gte, lte, sql, count } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import {
   users, servicePackages, orders, loyaltyConfig, loyaltyTransactions,
-  referrals, blogPosts, testimonials, galleryItems, contactMessages, auditLogs,
+  referrals, blogPosts, testimonials, galleryItems, contactMessages, auditLogs, orderRatings,
   type User, type InsertUser, type ServicePackage, type InsertServicePackage,
   type Order, type InsertOrder, type LoyaltyConfig, type InsertLoyaltyConfig,
   type LoyaltyTransaction, type InsertLoyaltyTransaction, type Referral, type InsertReferral,
   type BlogPost, type InsertBlogPost, type Testimonial, type InsertTestimonial,
   type GalleryItem, type InsertGalleryItem, type ContactMessage, type InsertContactMessage,
-  type AuditLog, type InsertAuditLog
+  type AuditLog, type InsertAuditLog, type OrderRating, type InsertOrderRating
 } from "@shared/schema";
 
 function generateReferralCode(): string {
@@ -90,6 +90,11 @@ export interface IStorage {
   // Audit Logs
   getAuditLogs(filters?: { performedBy?: string; targetCollection?: string }): Promise<AuditLog[]>;
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+
+  // Order Ratings
+  getOrderRating(orderId: string): Promise<OrderRating | undefined>;
+  getOrderRatingsByDelegate(delegateId: string): Promise<OrderRating[]>;
+  createOrderRating(rating: InsertOrderRating): Promise<OrderRating>;
 
   // Analytics
   getAnalytics(startDate: Date, endDate: Date): Promise<{
@@ -400,6 +405,22 @@ export class DatabaseStorage implements IStorage {
   async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
     const id = randomUUID();
     const [created] = await db.insert(auditLogs).values({ ...log, id }).returning();
+    return created;
+  }
+
+  // Order Ratings
+  async getOrderRating(orderId: string): Promise<OrderRating | undefined> {
+    const [rating] = await db.select().from(orderRatings).where(eq(orderRatings.orderId, orderId));
+    return rating;
+  }
+
+  async getOrderRatingsByDelegate(delegateId: string): Promise<OrderRating[]> {
+    return db.select().from(orderRatings).where(eq(orderRatings.delegateId, delegateId)).orderBy(desc(orderRatings.createdAt));
+  }
+
+  async createOrderRating(rating: InsertOrderRating): Promise<OrderRating> {
+    const id = randomUUID();
+    const [created] = await db.insert(orderRatings).values({ ...rating, id }).returning();
     return created;
   }
 

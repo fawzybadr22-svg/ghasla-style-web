@@ -321,12 +321,15 @@ export default function TrackOrder() {
                             {[
                               { key: "pending", icon: CircleDot, label: { ar: "تم استلام الطلب", en: "Order Received", fr: "Commande reçue" } },
                               { key: "assigned", icon: Truck, label: { ar: "تم تخصيص السائق", en: "Driver Assigned", fr: "Chauffeur assigné" } },
+                              { key: "on_the_way", icon: MapPin, label: { ar: "في الطريق", en: "On The Way", fr: "En Route" } },
                               { key: "in_progress", icon: Car, label: { ar: "قيد التنفيذ", en: "In Progress", fr: "En cours" } },
                               { key: "completed", icon: CheckCircle, label: { ar: "مكتمل", en: "Completed", fr: "Terminé" } },
                             ].map((step, index) => {
-                              const currentStep = getStatusStep(selectedOrder.status);
-                              const isCompleted = currentStep > index;
-                              const isCurrent = currentStep === index + 1;
+                              const statusOrder = ["pending", "assigned", "on_the_way", "in_progress", "completed"];
+                              const currentIdx = statusOrder.indexOf(selectedOrder.status);
+                              const stepIdx = statusOrder.indexOf(step.key);
+                              const isCompleted = stepIdx < currentIdx;
+                              const isCurrent = stepIdx === currentIdx;
                               const StepIcon = step.icon;
 
                               return (
@@ -344,10 +347,10 @@ export default function TrackOrder() {
                                       {isCompleted ? (
                                         <Check className="h-4 w-4" />
                                       ) : (
-                                        <StepIcon className="h-4 w-4" />
+                                        <StepIcon className={`h-4 w-4 ${isCurrent && step.key === "on_the_way" ? "animate-pulse" : ""}`} />
                                       )}
                                     </div>
-                                    {index < 3 && (
+                                    {index < 4 && (
                                       <div
                                         className={`absolute top-8 start-1/2 -translate-x-1/2 w-0.5 h-6 ${
                                           isCompleted ? "bg-primary" : "bg-muted-foreground/20"
@@ -367,6 +370,11 @@ export default function TrackOrder() {
                                     {selectedOrder.driverName && step.key === "assigned" && (
                                       <p className="text-xs text-muted-foreground">
                                         {selectedOrder.driverName}
+                                      </p>
+                                    )}
+                                    {isCurrent && step.key === "on_the_way" && (
+                                      <p className="text-xs text-primary">
+                                        {getLocalizedText("السائق في الطريق إليك", "Driver is on the way to you", "Le chauffeur est en route")}
                                       </p>
                                     )}
                                   </div>
