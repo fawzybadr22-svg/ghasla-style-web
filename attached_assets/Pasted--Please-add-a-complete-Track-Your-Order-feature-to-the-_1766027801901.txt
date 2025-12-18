@@ -1,0 +1,78 @@
+
+Please add a complete “Track Your Order” feature to the Ghasla Style app, with both a home page section and a dedicated page connected to the customer account and existing orders in Firestore/DB.
+
+1) Home page section – Track Your Order
+
+On the home page, under the hero/booking area, add a new section titled “Track Your Order” with Arabic subtitle, e.g.:
+
+Title: “Track Your Order”
+
+Subtitle: «تتبع حالة طلب غسلتك خطوة بخطوة برقم الطلب أو من حسابك مباشرة»
+
+The section should contain:
+
+An input field where the user can paste or type their Order ID.
+
+A button labeled “Track Now” that, when clicked, queries the backend for that order.
+
+If a valid order is found, show a compact status view directly in the home section:
+
+Order status (pending / assigned / in_progress / completed / cancelled).
+
+Service name (e.g. Exterior Wash), car type, and scheduled time.
+
+A small progress indicator (e.g. stepper or horizontal bar) showing the current step.
+
+If the user is logged in, also show a shortcut link “View all my orders” that opens the full tracking page in their account.
+
+Handle invalid IDs gracefully with a clear message: “Order not found – please check your ID or log in to your account.”
+
+2) Dedicated “Track Your Order” page for logged‑in customers
+
+Create a new protected route/page, for example at /track-order or under the customer account (e.g. /account/track), only accessible to authenticated customers.
+
+On this page, show:
+
+A list of the customer’s recent orders (from Firestore/DB), with key info: Order ID, date/time, service, price, and current status.
+
+When the customer clicks an order, open a detailed view with:
+
+Timeline or stepper:
+
+Order Created
+
+Assigned to Driver
+
+In Progress
+
+Completed / Cancelled
+
+Any scheduled arrival window, area, and car details.
+
+If driver assignment and live updates exist in the backend, show live status by listening to real‑time changes in the order document.
+
+Add a filter or dropdown to view orders by status (All, Active, Completed, Cancelled).
+
+3) Data and integration details
+
+Use the existing orders collection / model you already created. The Track feature should not create new data, only read existing orders by:
+
+orderId (for guest/home tracking input).
+
+customerId (for the logged‑in account page).
+
+Ensure that Security Rules / backend checks enforce that:
+
+A customer can only see their own orders when logged in.
+
+The public home page “Track by Order ID” endpoint does NOT leak any sensitive personal info (e.g. hide customer name/phone; show only non‑sensitive summary).
+
+If necessary, add a dedicated lightweight endpoint or Firestore query to fetch an order by its public order_code that you can share with the customer by WhatsApp or SMS.
+
+4) UI/UX and animations
+
+Keep the new section and page consistent with the Ghasla Style theme (dark background, orange/blue accents, RTL Arabic labels + English titles).
+
+Add subtle animations: fade/slide in for the Track section on the home page, and for order cards on the tracking page.
+
+Ensure the layout is fully responsive on mobile and desktop, with large tap targets for order cards on phones

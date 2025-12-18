@@ -312,6 +312,39 @@ export async function registerRoutes(
   // ORDERS
   // ====================
 
+  // Public order tracking (returns limited info, no sensitive data)
+  app.get("/api/orders/track/:orderId", async (req, res) => {
+    try {
+      const order = await storage.getOrder(req.params.orderId);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      // Get service package for display name
+      const servicePackage = await storage.getPackage(order.servicePackageId);
+
+      // Return only non-sensitive public info
+      res.json({
+        id: order.id,
+        status: order.status,
+        carType: order.carType,
+        preferredDate: order.preferredDate,
+        preferredTime: order.preferredTime,
+        area: order.area,
+        createdAt: order.createdAt,
+        completedAt: order.completedAt,
+        assignedDriver: order.assignedDriver ? "Assigned" : null,
+        serviceName: servicePackage ? {
+          ar: servicePackage.nameAr,
+          en: servicePackage.nameEn,
+          fr: servicePackage.nameFr,
+        } : null,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Customer's orders
   app.get("/api/orders/customer/:customerId", async (req, res) => {
     try {
