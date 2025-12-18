@@ -23,6 +23,7 @@ import Account from "@/pages/Account";
 import AdminDashboard from "@/pages/admin/Dashboard";
 import DelegateDashboard from "@/pages/delegate/Dashboard";
 import TrackOrder from "@/pages/TrackOrder";
+import Blog from "@/pages/Blog";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -39,6 +40,8 @@ function Router() {
       <Route path="/register" component={Register} />
       <Route path="/account" component={Account} />
       <Route path="/track-order" component={TrackOrder} />
+      <Route path="/blog" component={Blog} />
+      <Route path="/blog/:id" component={Blog} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/:section" component={AdminDashboard} />
       <Route path="/delegate" component={DelegateDashboard} />

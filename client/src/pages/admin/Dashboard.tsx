@@ -488,19 +488,19 @@ export default function AdminDashboard() {
               <div className="space-y-6">
                 <h1 className="text-2xl font-bold">{t("admin.content")}</h1>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card className="hover-elevate cursor-pointer" onClick={() => {}}>
+                  <Card className="hover-elevate cursor-pointer" onClick={() => setLocation("/admin/blog")} data-testid="card-blog">
                     <CardContent className="pt-6 text-center">
                       <FileText className="h-12 w-12 mx-auto mb-4 text-primary" />
                       <p className="font-medium">{getLocalizedText("المدونة", "Blog Posts", "Articles de Blog")}</p>
                     </CardContent>
                   </Card>
-                  <Card className="hover-elevate cursor-pointer" onClick={() => {}}>
+                  <Card className="hover-elevate cursor-pointer" onClick={() => setLocation("/admin/testimonials")} data-testid="card-testimonials">
                     <CardContent className="pt-6 text-center">
                       <Users className="h-12 w-12 mx-auto mb-4 text-chart-1" />
                       <p className="font-medium">{getLocalizedText("الشهادات", "Testimonials", "Témoignages")}</p>
                     </CardContent>
                   </Card>
-                  <Card className="hover-elevate cursor-pointer" onClick={() => {}}>
+                  <Card className="hover-elevate cursor-pointer" onClick={() => setLocation("/admin/gallery")} data-testid="card-gallery">
                     <CardContent className="pt-6 text-center">
                       <Eye className="h-12 w-12 mx-auto mb-4 text-chart-3" />
                       <p className="font-medium">{getLocalizedText("المعرض", "Gallery", "Galerie")}</p>
@@ -508,6 +508,18 @@ export default function AdminDashboard() {
                   </Card>
                 </div>
               </div>
+            )}
+
+            {section === "blog" && (
+              <ContentBlogManager getLocalizedText={getLocalizedText} firebaseUser={firebaseUser} />
+            )}
+
+            {section === "testimonials" && (
+              <ContentTestimonialsManager getLocalizedText={getLocalizedText} firebaseUser={firebaseUser} />
+            )}
+
+            {section === "gallery" && (
+              <ContentGalleryManager getLocalizedText={getLocalizedText} firebaseUser={firebaseUser} />
             )}
 
             {section === "analytics" && (
@@ -1147,6 +1159,466 @@ function AdminManagement({
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function ContentBlogManager({ getLocalizedText, firebaseUser }: { getLocalizedText: (ar: string, en: string, fr: string) => string; firebaseUser: any }) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [form, setForm] = useState({
+    titleAr: "", titleEn: "", titleFr: "",
+    contentAr: "", contentEn: "", contentFr: "",
+    imageUrl: "", isPublished: true
+  });
+
+  const getAuthHeaders = async () => {
+    if (!firebaseUser) throw new Error("Not authenticated");
+    const token = await firebaseUser.getIdToken();
+    return { Authorization: `Bearer ${token}` };
+  };
+
+  const { data: posts, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/blog"],
+    queryFn: async () => {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/admin/blog", { headers });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    }
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: typeof form) => {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/admin/blog", {
+        method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error("Failed to create");
+      return res.json();
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/blog"] }); toast({ title: getLocalizedText("تم الإنشاء", "Created", "Créé") }); resetForm(); }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<typeof form> }) => {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/admin/blog/${id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      return res.json();
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/blog"] }); toast({ title: getLocalizedText("تم التحديث", "Updated", "Mis à jour") }); resetForm(); }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/admin/blog/${id}`, { method: "DELETE", headers });
+      if (!res.ok) throw new Error("Failed to delete");
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/blog"] }); toast({ title: getLocalizedText("تم الحذف", "Deleted", "Supprimé") }); }
+  });
+
+  const resetForm = () => {
+    setForm({ titleAr: "", titleEn: "", titleFr: "", contentAr: "", contentEn: "", contentFr: "", imageUrl: "", isPublished: true });
+    setEditing(null);
+    setShowForm(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl font-bold">{getLocalizedText("إدارة المدونة", "Blog Management", "Gestion du Blog")}</h1>
+        <Button onClick={() => { resetForm(); setShowForm(true); }} data-testid="button-add-blog">
+          <Plus className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+          {getLocalizedText("إضافة مقال", "Add Article", "Ajouter un article")}
+        </Button>
+      </div>
+
+      {(showForm || editing) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{editing ? getLocalizedText("تعديل المقال", "Edit Article", "Modifier l'article") : getLocalizedText("إضافة مقال جديد", "Add New Article", "Ajouter un nouvel article")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>{getLocalizedText("العنوان (عربي)", "Title (Arabic)", "Titre (Arabe)")}</Label>
+                <Input value={form.titleAr} onChange={(e) => setForm({ ...form, titleAr: e.target.value })} data-testid="input-blog-title-ar" />
+              </div>
+              <div className="space-y-2">
+                <Label>{getLocalizedText("العنوان (إنجليزي)", "Title (English)", "Titre (Anglais)")}</Label>
+                <Input value={form.titleEn} onChange={(e) => setForm({ ...form, titleEn: e.target.value })} data-testid="input-blog-title-en" />
+              </div>
+              <div className="space-y-2">
+                <Label>{getLocalizedText("العنوان (فرنسي)", "Title (French)", "Titre (Français)")}</Label>
+                <Input value={form.titleFr} onChange={(e) => setForm({ ...form, titleFr: e.target.value })} data-testid="input-blog-title-fr" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>{getLocalizedText("المحتوى (عربي)", "Content (Arabic)", "Contenu (Arabe)")}</Label>
+              <textarea className="w-full min-h-[100px] p-2 border rounded-md bg-background" value={form.contentAr} onChange={(e) => setForm({ ...form, contentAr: e.target.value })} data-testid="input-blog-content-ar" />
+            </div>
+            <div className="space-y-2">
+              <Label>{getLocalizedText("المحتوى (إنجليزي)", "Content (English)", "Contenu (Anglais)")}</Label>
+              <textarea className="w-full min-h-[100px] p-2 border rounded-md bg-background" value={form.contentEn} onChange={(e) => setForm({ ...form, contentEn: e.target.value })} data-testid="input-blog-content-en" />
+            </div>
+            <div className="space-y-2">
+              <Label>{getLocalizedText("المحتوى (فرنسي)", "Content (French)", "Contenu (Français)")}</Label>
+              <textarea className="w-full min-h-[100px] p-2 border rounded-md bg-background" value={form.contentFr} onChange={(e) => setForm({ ...form, contentFr: e.target.value })} data-testid="input-blog-content-fr" />
+            </div>
+            <div className="space-y-2">
+              <Label>{getLocalizedText("رابط الصورة", "Image URL", "URL de l'image")}</Label>
+              <Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} data-testid="input-blog-image" />
+            </div>
+            <div className="flex items-center gap-4 flex-wrap">
+              <Button onClick={() => editing ? updateMutation.mutate({ id: editing.id, data: form }) : createMutation.mutate(form)} disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-save-blog">
+                <Save className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                {getLocalizedText("حفظ", "Save", "Enregistrer")}
+              </Button>
+              <Button variant="outline" onClick={resetForm} data-testid="button-cancel-blog">
+                <X className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                {getLocalizedText("إلغاء", "Cancel", "Annuler")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {isLoading ? (
+        <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-24" />)}</div>
+      ) : posts && posts.length > 0 ? (
+        <div className="space-y-4">
+          {posts.map((post: any) => (
+            <Card key={post.id}>
+              <CardContent className="pt-4">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium">{getLocalizedText(post.titleAr, post.titleEn, post.titleFr)}</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{getLocalizedText(post.contentAr, post.contentEn, post.contentFr)}</p>
+                    <Badge variant={post.isPublished ? "default" : "secondary"} className="mt-2">
+                      {post.isPublished ? getLocalizedText("منشور", "Published", "Publié") : getLocalizedText("مسودة", "Draft", "Brouillon")}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button size="icon" variant="outline" onClick={() => { setEditing(post); setForm({ titleAr: post.titleAr, titleEn: post.titleEn, titleFr: post.titleFr, contentAr: post.contentAr, contentEn: post.contentEn, contentFr: post.contentFr, imageUrl: post.imageUrl || "", isPublished: post.isPublished }); }} data-testid={`edit-blog-${post.id}`}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="destructive" onClick={() => { if (confirm(getLocalizedText("هل أنت متأكد؟", "Are you sure?", "Êtes-vous sûr?"))) deleteMutation.mutate(post.id); }} data-testid={`delete-blog-${post.id}`}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <p className="text-muted-foreground text-center py-8">{t("common.noData")}</p>
+      )}
+    </div>
+  );
+}
+
+function ContentTestimonialsManager({ getLocalizedText, firebaseUser }: { getLocalizedText: (ar: string, en: string, fr: string) => string; firebaseUser: any }) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [form, setForm] = useState({ customerName: "", contentAr: "", contentEn: "", contentFr: "", rating: 5, imageUrl: "", isApproved: true });
+
+  const getAuthHeaders = async () => {
+    if (!firebaseUser) throw new Error("Not authenticated");
+    const token = await firebaseUser.getIdToken();
+    return { Authorization: `Bearer ${token}` };
+  };
+
+  const { data: items, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/testimonials"],
+    queryFn: async () => {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/admin/testimonials", { headers });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    }
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: typeof form) => {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/admin/testimonials", {
+        method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error("Failed to create");
+      return res.json();
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/testimonials"] }); toast({ title: getLocalizedText("تم الإنشاء", "Created", "Créé") }); resetForm(); }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<typeof form> }) => {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/admin/testimonials/${id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      return res.json();
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/testimonials"] }); toast({ title: getLocalizedText("تم التحديث", "Updated", "Mis à jour") }); resetForm(); }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/admin/testimonials/${id}`, { method: "DELETE", headers });
+      if (!res.ok) throw new Error("Failed to delete");
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/testimonials"] }); toast({ title: getLocalizedText("تم الحذف", "Deleted", "Supprimé") }); }
+  });
+
+  const resetForm = () => { setForm({ customerName: "", contentAr: "", contentEn: "", contentFr: "", rating: 5, imageUrl: "", isApproved: true }); setEditing(null); setShowForm(false); };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl font-bold">{getLocalizedText("إدارة الشهادات", "Testimonials Management", "Gestion des Témoignages")}</h1>
+        <Button onClick={() => { resetForm(); setShowForm(true); }} data-testid="button-add-testimonial">
+          <Plus className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+          {getLocalizedText("إضافة شهادة", "Add Testimonial", "Ajouter un témoignage")}
+        </Button>
+      </div>
+
+      {(showForm || editing) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{editing ? getLocalizedText("تعديل الشهادة", "Edit Testimonial", "Modifier le témoignage") : getLocalizedText("إضافة شهادة جديدة", "Add New Testimonial", "Ajouter un nouveau témoignage")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{getLocalizedText("اسم العميل", "Customer Name", "Nom du client")}</Label>
+                <Input value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} data-testid="input-testimonial-name" />
+              </div>
+              <div className="space-y-2">
+                <Label>{getLocalizedText("التقييم", "Rating", "Note")}</Label>
+                <Select value={String(form.rating)} onValueChange={(v) => setForm({ ...form, rating: Number(v) })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[5,4,3,2,1].map(n => <SelectItem key={n} value={String(n)}>{n} / 5</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>{getLocalizedText("المحتوى (عربي)", "Content (Arabic)", "Contenu (Arabe)")}</Label>
+              <textarea className="w-full min-h-[80px] p-2 border rounded-md bg-background" value={form.contentAr} onChange={(e) => setForm({ ...form, contentAr: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>{getLocalizedText("المحتوى (إنجليزي)", "Content (English)", "Contenu (Anglais)")}</Label>
+              <textarea className="w-full min-h-[80px] p-2 border rounded-md bg-background" value={form.contentEn} onChange={(e) => setForm({ ...form, contentEn: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>{getLocalizedText("المحتوى (فرنسي)", "Content (French)", "Contenu (Français)")}</Label>
+              <textarea className="w-full min-h-[80px] p-2 border rounded-md bg-background" value={form.contentFr} onChange={(e) => setForm({ ...form, contentFr: e.target.value })} />
+            </div>
+            <div className="flex items-center gap-4 flex-wrap">
+              <Button onClick={() => editing ? updateMutation.mutate({ id: editing.id, data: form }) : createMutation.mutate(form)} disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-save-testimonial">
+                <Save className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                {getLocalizedText("حفظ", "Save", "Enregistrer")}
+              </Button>
+              <Button variant="outline" onClick={resetForm} data-testid="button-cancel-testimonial">
+                <X className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                {getLocalizedText("إلغاء", "Cancel", "Annuler")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {isLoading ? (
+        <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-24" />)}</div>
+      ) : items && items.length > 0 ? (
+        <div className="space-y-4">
+          {items.map((item: any) => (
+            <Card key={item.id}>
+              <CardContent className="pt-4">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium">{item.customerName}</h3>
+                    <p className="text-sm text-muted-foreground">{getLocalizedText(item.contentAr, item.contentEn, item.contentFr)}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant={item.isApproved ? "default" : "secondary"}>{item.isApproved ? getLocalizedText("معتمد", "Approved", "Approuvé") : getLocalizedText("قيد المراجعة", "Pending", "En attente")}</Badge>
+                      <Badge variant="outline">{item.rating}/5</Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button size="icon" variant="outline" onClick={() => { setEditing(item); setForm({ customerName: item.customerName, contentAr: item.contentAr, contentEn: item.contentEn, contentFr: item.contentFr, rating: item.rating, imageUrl: item.imageUrl || "", isApproved: item.isApproved }); }}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="destructive" onClick={() => { if (confirm(getLocalizedText("هل أنت متأكد؟", "Are you sure?", "Êtes-vous sûr?"))) deleteMutation.mutate(item.id); }}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <p className="text-muted-foreground text-center py-8">{t("common.noData")}</p>
+      )}
+    </div>
+  );
+}
+
+function ContentGalleryManager({ getLocalizedText, firebaseUser }: { getLocalizedText: (ar: string, en: string, fr: string) => string; firebaseUser: any }) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [form, setForm] = useState({ beforeImageUrl: "", afterImageUrl: "", captionAr: "", captionEn: "", captionFr: "", isPublished: true });
+
+  const getAuthHeaders = async () => {
+    if (!firebaseUser) throw new Error("Not authenticated");
+    const token = await firebaseUser.getIdToken();
+    return { Authorization: `Bearer ${token}` };
+  };
+
+  const { data: items, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/gallery"],
+    queryFn: async () => {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/admin/gallery", { headers });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    }
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: typeof form) => {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/admin/gallery", {
+        method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error("Failed to create");
+      return res.json();
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/gallery"] }); toast({ title: getLocalizedText("تم الإنشاء", "Created", "Créé") }); resetForm(); }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<typeof form> }) => {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/admin/gallery/${id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      return res.json();
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/gallery"] }); toast({ title: getLocalizedText("تم التحديث", "Updated", "Mis à jour") }); resetForm(); }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/admin/gallery/${id}`, { method: "DELETE", headers });
+      if (!res.ok) throw new Error("Failed to delete");
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/gallery"] }); toast({ title: getLocalizedText("تم الحذف", "Deleted", "Supprimé") }); }
+  });
+
+  const resetForm = () => { setForm({ beforeImageUrl: "", afterImageUrl: "", captionAr: "", captionEn: "", captionFr: "", isPublished: true }); setEditing(null); setShowForm(false); };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl font-bold">{getLocalizedText("إدارة المعرض", "Gallery Management", "Gestion de la Galerie")}</h1>
+        <Button onClick={() => { resetForm(); setShowForm(true); }} data-testid="button-add-gallery">
+          <Plus className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+          {getLocalizedText("إضافة صورة", "Add Image", "Ajouter une image")}
+        </Button>
+      </div>
+
+      {(showForm || editing) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{editing ? getLocalizedText("تعديل الصورة", "Edit Image", "Modifier l'image") : getLocalizedText("إضافة صورة جديدة", "Add New Image", "Ajouter une nouvelle image")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{getLocalizedText("صورة قبل", "Before Image URL", "URL image avant")}</Label>
+                <Input value={form.beforeImageUrl} onChange={(e) => setForm({ ...form, beforeImageUrl: e.target.value })} data-testid="input-gallery-before" />
+              </div>
+              <div className="space-y-2">
+                <Label>{getLocalizedText("صورة بعد", "After Image URL", "URL image après")}</Label>
+                <Input value={form.afterImageUrl} onChange={(e) => setForm({ ...form, afterImageUrl: e.target.value })} data-testid="input-gallery-after" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>{getLocalizedText("الوصف (عربي)", "Caption (Arabic)", "Légende (Arabe)")}</Label>
+                <Input value={form.captionAr} onChange={(e) => setForm({ ...form, captionAr: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>{getLocalizedText("الوصف (إنجليزي)", "Caption (English)", "Légende (Anglais)")}</Label>
+                <Input value={form.captionEn} onChange={(e) => setForm({ ...form, captionEn: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>{getLocalizedText("الوصف (فرنسي)", "Caption (French)", "Légende (Français)")}</Label>
+                <Input value={form.captionFr} onChange={(e) => setForm({ ...form, captionFr: e.target.value })} />
+              </div>
+            </div>
+            <div className="flex items-center gap-4 flex-wrap">
+              <Button onClick={() => editing ? updateMutation.mutate({ id: editing.id, data: form }) : createMutation.mutate(form)} disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-save-gallery">
+                <Save className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                {getLocalizedText("حفظ", "Save", "Enregistrer")}
+              </Button>
+              <Button variant="outline" onClick={resetForm} data-testid="button-cancel-gallery">
+                <X className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                {getLocalizedText("إلغاء", "Cancel", "Annuler")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{[1,2,3].map(i => <Skeleton key={i} className="h-48" />)}</div>
+      ) : items && items.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {items.map((item: any) => (
+            <Card key={item.id} className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="grid grid-cols-2 gap-1">
+                  {item.beforeImageUrl && <img src={item.beforeImageUrl} alt="Before" className="w-full h-32 object-cover" />}
+                  {item.afterImageUrl && <img src={item.afterImageUrl} alt="After" className="w-full h-32 object-cover" />}
+                </div>
+                <div className="p-4">
+                  <p className="text-sm">{getLocalizedText(item.captionAr, item.captionEn, item.captionFr)}</p>
+                  <div className="flex items-center justify-between gap-2 mt-2">
+                    <Badge variant={item.isPublished ? "default" : "secondary"}>{item.isPublished ? getLocalizedText("منشور", "Published", "Publié") : getLocalizedText("مسودة", "Draft", "Brouillon")}</Badge>
+                    <div className="flex gap-1">
+                      <Button size="icon" variant="outline" onClick={() => { setEditing(item); setForm({ beforeImageUrl: item.beforeImageUrl, afterImageUrl: item.afterImageUrl, captionAr: item.captionAr, captionEn: item.captionEn, captionFr: item.captionFr, isPublished: item.isPublished }); }}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="destructive" onClick={() => { if (confirm(getLocalizedText("هل أنت متأكد؟", "Are you sure?", "Êtes-vous sûr?"))) deleteMutation.mutate(item.id); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <p className="text-muted-foreground text-center py-8">{t("common.noData")}</p>
+      )}
     </div>
   );
 }
