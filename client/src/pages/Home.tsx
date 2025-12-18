@@ -13,7 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import heroImage from "@assets/generated_images/luxury_car_with_water_droplets.png";
 import fleetImage from "@assets/generated_images/branded_mobile_wash_van.png";
-import beforeAfterImage from "@assets/generated_images/before_after_car_interior.png";
+import beforeAfterExterior from "@assets/generated_images/exterior_wash_before_after.png";
+import beforeAfterInterior from "@assets/generated_images/interior_cleaning_before_after.png";
+import beforeAfterDetailing from "@assets/generated_images/full_detailing_before_after.png";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
@@ -82,7 +84,7 @@ export default function Home() {
 
   const fleetStats = [
     { value: "20", labelAr: "دقيقة متوسط الوصول", labelEn: "Min Avg Arrival", labelFr: "Min Arrivée Moy" },
-    { value: "50+", labelAr: "سيارة نشطة", labelEn: "Active Vans", labelFr: "Fourgons Actifs" },
+    { value: "5", labelAr: "سيارات مجهزة", labelEn: "Equipped Vans", labelFr: "Fourgons Équipés" },
     { value: "24/7", labelAr: "دعم متواصل", labelEn: "Support", labelFr: "Support" },
   ];
 
@@ -137,10 +139,37 @@ export default function Home() {
     },
   ];
 
-  const beforeAfterItems = [
-    { id: 1, type: "exterior", before: "Dusty exterior", after: "Shiny clean" },
-    { id: 2, type: "interior", before: "Dirty seats", after: "Fresh interior" },
-    { id: 3, type: "wheel", before: "Muddy wheels", after: "Gleaming rims" },
+  const beforeAfterComparisons = [
+    {
+      id: 1,
+      image: beforeAfterExterior,
+      titleAr: "غسيل خارجي",
+      titleEn: "External Wash",
+      titleFr: "Lavage Extérieur",
+      descAr: "من الغبار والأوساخ إلى لمعان مثالي",
+      descEn: "From dusty and dirty to perfect shine",
+      descFr: "De poussiéreux à brillance parfaite",
+    },
+    {
+      id: 2,
+      image: beforeAfterInterior,
+      titleAr: "تنظيف داخلي",
+      titleEn: "Interior Cleaning",
+      titleFr: "Nettoyage Intérieur",
+      descAr: "من البقع والغبار إلى نظافة تامة",
+      descEn: "From stains and dust to spotless clean",
+      descFr: "Des taches à une propreté impeccable",
+    },
+    {
+      id: 3,
+      image: beforeAfterDetailing,
+      titleAr: "تفصيل كامل",
+      titleEn: "Full Detailing",
+      titleFr: "Détaillage Complet",
+      descAr: "تصحيح الطلاء ولمعان كالمرآة",
+      descEn: "Paint correction and mirror-like finish",
+      descFr: "Correction peinture et finition miroir",
+    },
   ];
 
   return (
@@ -614,27 +643,46 @@ export default function Home() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
-            variants={fadeInUp}
-            className="max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl"
+            variants={staggerContainer}
+            className="grid grid-cols-1 lg:grid-cols-3 gap-6"
           >
-            <div className="relative group cursor-pointer">
-              <img
-                src={beforeAfterImage}
-                alt="Before and After"
-                className="w-full h-auto"
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-1 h-full bg-white/50 group-hover:bg-primary transition-colors" />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-4">
-                  <Badge className="bg-red-500/80">
-                    {getLocalizedText("قبل", "Before", "Avant")}
-                  </Badge>
-                  <Badge className="bg-green-500/80">
-                    {getLocalizedText("بعد", "After", "Après")}
-                  </Badge>
+            {beforeAfterComparisons.map((comparison, index) => (
+              <motion.div
+                key={comparison.id}
+                variants={fadeInUp}
+                custom={index}
+                className="group"
+              >
+                <div className="relative rounded-xl overflow-hidden shadow-2xl bg-black/20 backdrop-blur-sm">
+                  <div className="relative aspect-video overflow-hidden">
+                    <img
+                      src={comparison.image}
+                      alt={getLocalizedText(comparison.titleAr, comparison.titleEn, comparison.titleFr)}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-0.5 h-full bg-white/40" />
+                    </div>
+                    <div className="absolute bottom-4 inset-x-4 flex justify-between">
+                      <Badge className="bg-red-500/90 text-white">
+                        {getLocalizedText("قبل", "Before", "Avant")}
+                      </Badge>
+                      <Badge className="bg-green-500/90 text-white">
+                        {getLocalizedText("بعد", "After", "Après")}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="p-4 text-center">
+                    <h3 className="text-lg font-semibold mb-1">
+                      {getLocalizedText(comparison.titleAr, comparison.titleEn, comparison.titleFr)}
+                    </h3>
+                    <p className="text-sm text-white/60">
+                      {getLocalizedText(comparison.descAr, comparison.descEn, comparison.descFr)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </motion.div>
+            ))}
           </motion.div>
         </div>
       </section>
