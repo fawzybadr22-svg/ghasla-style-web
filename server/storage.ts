@@ -40,7 +40,7 @@ export interface IStorage {
   // Orders
   getOrder(id: string): Promise<Order | undefined>;
   getOrdersByCustomer(customerId: string): Promise<Order[]>;
-  getOrders(filters?: { status?: string; startDate?: Date; endDate?: Date }): Promise<Order[]>;
+  getOrders(filters?: { status?: string; startDate?: Date; endDate?: Date; assignedDriver?: string }): Promise<Order[]>;
   createOrder(order: InsertOrder): Promise<Order>;
   updateOrder(id: string, data: Partial<Order>): Promise<Order | undefined>;
 
@@ -186,11 +186,12 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(orders).where(eq(orders.customerId, customerId)).orderBy(desc(orders.createdAt));
   }
 
-  async getOrders(filters?: { status?: string; startDate?: Date; endDate?: Date }): Promise<Order[]> {
+  async getOrders(filters?: { status?: string; startDate?: Date; endDate?: Date; assignedDriver?: string }): Promise<Order[]> {
     const conditions = [];
     if (filters?.status) conditions.push(eq(orders.status, filters.status as any));
     if (filters?.startDate) conditions.push(gte(orders.createdAt, filters.startDate));
     if (filters?.endDate) conditions.push(lte(orders.createdAt, filters.endDate));
+    if (filters?.assignedDriver) conditions.push(eq(orders.assignedDriver, filters.assignedDriver));
     if (conditions.length > 0) {
       return db.select().from(orders).where(and(...conditions)).orderBy(desc(orders.createdAt));
     }

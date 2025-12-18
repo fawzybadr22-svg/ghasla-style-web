@@ -11,6 +11,7 @@ import { Timestamp } from "firebase/firestore";
 export type FirestoreOrderStatus = 
   | "pending"      // Order received, awaiting assignment
   | "assigned"     // Driver/team assigned
+  | "on_the_way"   // Driver is on the way to customer
   | "in_progress"  // Wash in progress
   | "completed"    // Service completed
   | "cancelled";   // Order cancelled
@@ -172,19 +173,26 @@ export const ORDER_STATUS_CONFIG: Record<FirestoreOrderStatus, {
     color: "blue",
     step: 2
   },
+  on_the_way: {
+    labelAr: "في الطريق",
+    labelEn: "On the Way",
+    labelFr: "En route",
+    color: "cyan",
+    step: 3
+  },
   in_progress: {
     labelAr: "قيد التنفيذ",
     labelEn: "In Progress",
     labelFr: "En cours",
     color: "orange",
-    step: 3
+    step: 4
   },
   completed: {
     labelAr: "مكتمل",
     labelEn: "Completed",
     labelFr: "Terminé",
     color: "green",
-    step: 4
+    step: 5
   },
   cancelled: {
     labelAr: "ملغي",

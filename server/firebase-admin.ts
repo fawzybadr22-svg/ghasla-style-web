@@ -137,6 +137,61 @@ export async function optionalAuth(
   }
 }
 
+export async function requireDelegate(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") 
+      ? authHeader.slice(7) 
+      : null;
+    
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    const firebaseAdmin = getFirebaseAdmin();
+    const decoded = await firebaseAdmin.auth().verifyIdToken(token);
+    
+    if (decoded.delegate === true || decoded.admin === true || decoded.superAdmin === true) {
+      req.user = decoded;
+      return next();
+    }
+
+    return res.status(403).json({ error: "Not authorized as delegate" });
+  } catch (err) {
+    console.error("requireDelegate error:", err);
+    return res.status(401).json({ error: "Invalid token" });
+  }
+}
+
+export async function requireAuth(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") 
+      ? authHeader.slice(7) 
+      : null;
+    
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    const firebaseAdmin = getFirebaseAdmin();
+    const decoded = await firebaseAdmin.auth().verifyIdToken(token);
+    req.user = decoded;
+    return next();
+  } catch (err) {
+    console.error("requireAuth error:", err);
+    return res.status(401).json({ error: "Invalid token" });
+  }
+}
+
 export async function setSuperAdmin(email: string): Promise<{ uid: string; success: boolean }> {
   try {
     const firebaseAdmin = getFirebaseAdmin();

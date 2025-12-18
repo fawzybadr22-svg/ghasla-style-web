@@ -3,9 +3,9 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Enums
-export const userRoleEnum = pgEnum("user_role", ["customer", "admin", "super_admin"]);
+export const userRoleEnum = pgEnum("user_role", ["customer", "delegate", "admin", "super_admin"]);
 export const userStatusEnum = pgEnum("user_status", ["active", "blocked"]);
-export const orderStatusEnum = pgEnum("order_status", ["pending", "assigned", "in_progress", "completed", "cancelled"]);
+export const orderStatusEnum = pgEnum("order_status", ["pending", "assigned", "on_the_way", "in_progress", "completed", "cancelled"]);
 export const carTypeEnum = pgEnum("car_type", ["sedan", "suv", "other"]);
 export const paymentMethodEnum = pgEnum("payment_method", ["cash", "online"]);
 export const serviceCategoryEnum = pgEnum("service_category", ["exterior", "interior", "full", "vip", "monthly"]);
@@ -29,6 +29,13 @@ export const users = pgTable("users", {
   carPlateNumber: text("car_plate_number"),
   twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
   twoFactorSecret: text("two_factor_secret"),
+  // Delegate-specific fields
+  autoAcceptOrders: boolean("auto_accept_orders").notNull().default(false),
+  coverageAreas: text("coverage_areas").array(),
+  maxActiveOrders: integer("max_active_orders").notNull().default(3),
+  isAvailable: boolean("is_available").notNull().default(true),
+  currentLatitude: real("current_latitude"),
+  currentLongitude: real("current_longitude"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -66,7 +73,9 @@ export const orders = pgTable("orders", {
   carDetails: text("car_details"),
   servicePackageId: text("service_package_id").notNull().references(() => servicePackages.id),
   priceKD: real("price_kd").notNull(),
+  finalPriceKD: real("final_price_kd"),
   paymentMethod: paymentMethodEnum("payment_method").notNull(),
+  isPaid: boolean("is_paid").notNull().default(false),
   address: text("address").notNull(),
   area: text("area").notNull(),
   latitude: real("latitude"),
@@ -79,12 +88,28 @@ export const orders = pgTable("orders", {
   referralId: text("referral_id"),
   cancelReason: text("cancel_reason"),
   assignedDriver: text("assigned_driver"),
+  assignedAt: timestamp("assigned_at"),
+  startedAt: timestamp("started_at"),
+  onTheWayAt: timestamp("on_the_way_at"),
   completedAt: timestamp("completed_at"),
+  delegateNotes: text("delegate_notes"),
+  customerNotes: text("customer_notes"),
+  beforePhotoUrl: text("before_photo_url"),
+  afterPhotoUrl: text("after_photo_url"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true, loyaltyPointsEarned: true, completedAt: true });
+export const insertOrderSchema = createInsertSchema(orders).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true, 
+  loyaltyPointsEarned: true, 
+  completedAt: true,
+  assignedAt: true,
+  startedAt: true,
+  onTheWayAt: true,
+});
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type Order = typeof orders.$inferSelect;
 

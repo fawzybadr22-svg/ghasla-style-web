@@ -1391,5 +1391,401 @@ export async function registerRoutes(
     }
   });
 
+  // ==========================================
+  // DELEGATE (DRIVER) ROUTES
+  // ==========================================
+  
+  const { requireDelegate, requireAuth } = await import("./firebase-admin");
+
+  // Get delegate profile
+  app.get("/api/delegate/profile", requireDelegate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const delegateId = req.user?.uid;
+      if (!delegateId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      const delegate = await storage.getUser(delegateId);
+      if (!delegate || (delegate.role !== "delegate" && delegate.role !== "admin" && delegate.role !== "super_admin")) {
+        return res.status(403).json({ error: "Not a delegate" });
+      }
+      
+      const { twoFactorSecret, ...safeDelegate } = delegate;
+      res.json(safeDelegate);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update delegate settings (auto-accept, availability)
+  app.patch("/api/delegate/profile", requireDelegate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const delegateId = req.user?.uid;
+      if (!delegateId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      const { autoAcceptOrders, isAvailable, currentLatitude, currentLongitude } = req.body;
+      
+      const updateData: any = {};
+      if (typeof autoAcceptOrders === "boolean") updateData.autoAcceptOrders = autoAcceptOrders;
+      if (typeof isAvailable === "boolean") updateData.isAvailable = isAvailable;
+      if (currentLatitude !== undefined) updateData.currentLatitude = currentLatitude;
+      if (currentLongitude !== undefined) updateData.currentLongitude = currentLongitude;
+      
+      const updated = await storage.updateUser(delegateId, updateData);
+      const { twoFactorSecret, ...safeDelegate } = updated!;
+      res.json(safeDelegate);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Get available orders for delegate (pending orders in their coverage area)
+  app.get("/api/delegate/orders/available", requireDelegate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const delegateId = req.user?.uid;
+      if (!delegateId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      const delegate = await storage.getUser(delegateId);
+      if (!delegate) {
+        return res.status(404).json({ error: "Delegate not found" });
+      }
+      
+      // Get pending orders
+      const allOrders = await storage.getOrders({ status: "pending" });
+      
+      // Filter by delegate's coverage areas if set
+      let availableOrders = allOrders;
+      if (delegate.coverageAreas && delegate.coverageAreas.length > 0) {
+        availableOrders = allOrders.filter(order => 
+          delegate.coverageAreas!.includes(order.area)
+        );
+      }
+      
+      // Enrich with service package info
+      const enrichedOrders = await Promise.all(availableOrders.map(async (order) => {
+        const servicePackage = await storage.getServicePackage(order.servicePackageId);
+        const customer = await storage.getUser(order.customerId);
+        return {
+          ...order,
+          serviceName: servicePackage?.nameEn || "Unknown",
+          serviceNameAr: servicePackage?.nameAr || "غير معروف",
+          customerName: customer?.name || "Customer",
+          customerPhone: customer?.phone || "",
+        };
+      }));
+      
+      res.json(enrichedOrders);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get delegate's current (assigned) orders
+  app.get("/api/delegate/orders/current", requireDelegate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const delegateId = req.user?.uid;
+      if (!delegateId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      // Get orders assigned to this delegate that are not completed/cancelled
+      const assignedOrders = await storage.getOrders({ assignedDriver: delegateId });
+      const activeOrders = assignedOrders.filter(o => 
+        o.status === "assigned" || o.status === "on_the_way" || o.status === "in_progress"
+      );
+      
+      // Enrich with service package and customer info
+      const enrichedOrders = await Promise.all(activeOrders.map(async (order) => {
+        const servicePackage = await storage.getServicePackage(order.servicePackageId);
+        const customer = await storage.getUser(order.customerId);
+        return {
+          ...order,
+          serviceName: servicePackage?.nameEn || "Unknown",
+          serviceNameAr: servicePackage?.nameAr || "غير معروف",
+          customerName: customer?.name || "Customer",
+          customerPhone: customer?.phone || "",
+        };
+      }));
+      
+      res.json(enrichedOrders);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get delegate's completed orders (history)
+  app.get("/api/delegate/orders/history", requireDelegate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const delegateId = req.user?.uid;
+      if (!delegateId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      const assignedOrders = await storage.getOrders({ assignedDriver: delegateId });
+      const completedOrders = assignedOrders.filter(o => 
+        o.status === "completed" || o.status === "cancelled"
+      );
+      
+      // Enrich with service package info
+      const enrichedOrders = await Promise.all(completedOrders.map(async (order) => {
+        const servicePackage = await storage.getServicePackage(order.servicePackageId);
+        return {
+          ...order,
+          serviceName: servicePackage?.nameEn || "Unknown",
+          serviceNameAr: servicePackage?.nameAr || "غير معروف",
+        };
+      }));
+      
+      res.json(enrichedOrders);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get order details for delegate
+  app.get("/api/delegate/orders/:id", requireDelegate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const delegateId = req.user?.uid;
+      if (!delegateId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      
+      // Only allow access if order is pending or assigned to this delegate
+      if (order.status !== "pending" && order.assignedDriver !== delegateId) {
+        return res.status(403).json({ error: "Not authorized to view this order" });
+      }
+      
+      const servicePackage = await storage.getServicePackage(order.servicePackageId);
+      const customer = await storage.getUser(order.customerId);
+      
+      res.json({
+        ...order,
+        serviceName: servicePackage?.nameEn || "Unknown",
+        serviceNameAr: servicePackage?.nameAr || "غير معروف",
+        estimatedMinutes: servicePackage?.estimatedMinutes || 0,
+        customerName: customer?.name || "Customer",
+        customerPhone: customer?.phone || "",
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Accept an order
+  app.post("/api/delegate/orders/:id/accept", requireDelegate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const delegateId = req.user?.uid;
+      if (!delegateId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      
+      if (order.status !== "pending") {
+        return res.status(400).json({ error: "Order is not available for acceptance" });
+      }
+      
+      // Check delegate's max active orders
+      const delegate = await storage.getUser(delegateId);
+      if (!delegate) {
+        return res.status(404).json({ error: "Delegate not found" });
+      }
+      
+      const currentOrders = await storage.getOrders({ assignedDriver: delegateId });
+      const activeCount = currentOrders.filter(o => 
+        o.status === "assigned" || o.status === "on_the_way" || o.status === "in_progress"
+      ).length;
+      
+      if (activeCount >= (delegate.maxActiveOrders || 3)) {
+        return res.status(400).json({ error: "Maximum active orders reached" });
+      }
+      
+      const updated = await storage.updateOrder(req.params.id, {
+        status: "assigned",
+        assignedDriver: delegateId,
+        assignedAt: new Date(),
+      });
+      
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Reject an order (log rejection - order stays in pending for other delegates)
+  app.post("/api/delegate/orders/:id/reject", requireDelegate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const delegateId = req.user?.uid;
+      if (!delegateId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      const { reason } = req.body;
+      const order = await storage.getOrder(req.params.id);
+      
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      
+      if (order.status !== "pending") {
+        return res.status(400).json({ error: "Order is not available for rejection" });
+      }
+      
+      // Log the rejection for analytics
+      await storage.createAuditLog({
+        actionType: "delegate_reject_order",
+        performedBy: delegateId,
+        targetCollection: "orders",
+        targetId: order.id,
+        newValue: JSON.stringify({ reason: reason || "No reason provided" }),
+      });
+      
+      res.json({ success: true, message: "Order rejected" });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Update order status (on_the_way, in_progress, completed)
+  app.patch("/api/delegate/orders/:id/status", requireDelegate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const delegateId = req.user?.uid;
+      if (!delegateId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      const { status, finalPriceKD, isPaid, delegateNotes, beforePhotoUrl, afterPhotoUrl } = req.body;
+      
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      
+      if (order.assignedDriver !== delegateId) {
+        return res.status(403).json({ error: "Not authorized to update this order" });
+      }
+      
+      // Validate status transitions
+      const validTransitions: Record<string, string[]> = {
+        assigned: ["on_the_way", "cancelled"],
+        on_the_way: ["in_progress", "cancelled"],
+        in_progress: ["completed", "cancelled"],
+      };
+      
+      if (!validTransitions[order.status]?.includes(status)) {
+        return res.status(400).json({ error: `Cannot transition from ${order.status} to ${status}` });
+      }
+      
+      const updateData: any = { status };
+      
+      // Set timestamp based on status
+      if (status === "on_the_way") {
+        updateData.onTheWayAt = new Date();
+      } else if (status === "in_progress") {
+        updateData.startedAt = new Date();
+      } else if (status === "completed") {
+        updateData.completedAt = new Date();
+        if (finalPriceKD !== undefined) updateData.finalPriceKD = finalPriceKD;
+        if (isPaid !== undefined) updateData.isPaid = isPaid;
+        
+        // Calculate and award loyalty points on completion
+        const priceForPoints = finalPriceKD || order.priceKD;
+        const loyaltyConfigData = await storage.getLoyaltyConfig();
+        const pointsPerKD = loyaltyConfigData?.pointsPerKD || 35;
+        const pointsEarned = Math.floor(priceForPoints * pointsPerKD);
+        
+        updateData.loyaltyPointsEarned = pointsEarned;
+        
+        // Add points to customer
+        const customer = await storage.getUser(order.customerId);
+        if (customer) {
+          await storage.updateUser(order.customerId, {
+            loyaltyPoints: customer.loyaltyPoints + pointsEarned,
+          });
+          
+          // Create loyalty transaction
+          await storage.createLoyaltyTransaction({
+            customerId: order.customerId,
+            orderId: order.id,
+            pointsChange: pointsEarned,
+            type: "earn",
+            note: `Points earned from order ${order.id}`,
+            createdBy: delegateId,
+          });
+        }
+      }
+      
+      if (delegateNotes) updateData.delegateNotes = delegateNotes;
+      if (beforePhotoUrl) updateData.beforePhotoUrl = beforePhotoUrl;
+      if (afterPhotoUrl) updateData.afterPhotoUrl = afterPhotoUrl;
+      
+      const updated = await storage.updateOrder(req.params.id, updateData);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Get delegate statistics
+  app.get("/api/delegate/stats", requireDelegate, async (req: AuthenticatedRequest, res) => {
+    try {
+      const delegateId = req.user?.uid;
+      if (!delegateId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      const { period } = req.query; // today, week, month
+      
+      const assignedOrders = await storage.getOrders({ assignedDriver: delegateId });
+      
+      // Filter by period
+      const now = new Date();
+      let startDate: Date;
+      
+      switch (period) {
+        case "today":
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          break;
+        case "week":
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case "month":
+        default:
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+      }
+      
+      const periodOrders = assignedOrders.filter(o => 
+        o.completedAt && new Date(o.completedAt) >= startDate
+      );
+      
+      const completedOrders = periodOrders.filter(o => o.status === "completed");
+      const totalRevenue = completedOrders.reduce((sum, o) => sum + (o.finalPriceKD || o.priceKD), 0);
+      
+      res.json({
+        completedOrdersCount: completedOrders.length,
+        totalRevenue,
+        period: period || "month",
+        activeOrdersCount: assignedOrders.filter(o => 
+          o.status === "assigned" || o.status === "on_the_way" || o.status === "in_progress"
+        ).length,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }

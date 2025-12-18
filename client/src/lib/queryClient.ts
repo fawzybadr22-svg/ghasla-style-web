@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { auth } from "./firebase";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -40,6 +41,17 @@ export const getQueryFn: <T>(options: {
     await throwIfResNotOk(res);
     return await res.json();
   };
+
+export async function getAuthHeaders(): Promise<Record<string, string>> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("Not authenticated");
+  }
+  const token = await user.getIdToken();
+  return {
+    Authorization: `Bearer ${token}`,
+  };
+}
 
 export const queryClient = new QueryClient({
   defaultOptions: {
