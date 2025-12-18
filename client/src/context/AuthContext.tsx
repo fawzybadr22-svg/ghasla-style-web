@@ -1,0 +1,149 @@
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { auth, onAuthChange, signInWithGoogle, signInWithEmail, signUpWithEmail, logOut, type FirebaseUser } from "@/lib/firebase";
+import type { User } from "@shared/schema";
+
+interface AuthContextType {
+  firebaseUser: FirebaseUser | null;
+  user: User | null;
+  loading: boolean;
+  loginWithGoogle: () => Promise<void>;
+  loginWithEmail: (email: string, password: string) => Promise<void>;
+  registerWithEmail: (email: string, password: string, name: string, phone?: string, referralCode?: string) => Promise<void>;
+  logout: () => Promise<void>;
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthChange(async (fbUser) => {
+      setFirebaseUser(fbUser);
+      if (fbUser) {
+        try {
+          const response = await fetch(`/api/users/${fbUser.uid}`);
+          if (response.ok) {
+            const userData = await response.json();
+            setUser(userData);
+          } else if (response.status === 404) {
+            setUser(null);
+          }
+        } catch (error) {
+          console.error("Error fetching user:", error);
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const loginWithGoogle = async () => {
+    try {
+      const result = await signInWithGoogle();
+      const response = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: result.user.uid,
+          email: result.user.email,
+          name: result.user.displayName,
+          phone: result.user.phoneNumber,
+        }),
+      });
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+      }
+    } catch (error) {
+      console.error("Google login error:", error);
+      throw error;
+    }
+  };
+
+  const loginWithEmail = async (email: string, password: string) => {
+    try {
+      await signInWithEmail(email, password);
+    } catch (error) {
+      console.error("Email login error:", error);
+      throw error;
+    }
+  };
+
+  const registerWithEmail = async (
+    email: string, 
+    password: string, 
+    name: string, 
+    phone?: string, 
+    referralCode?: string
+  ) => {
+    try {
+      const result = await signUpWithEmail(email, password);
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: result.user.uid,
+          email,
+          name,
+          phone,
+          referralCode,
+        }),
+      });
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await logOut();
+      setUser(null);
+    } catch (error) {
+      console.error("Logout error:", error);
+      throw error;
+    }
+  };
+
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const isSuperAdmin = user?.role === "super_admin";
+
+  return (
+    <AuthContext.Provider
+      value={{
+        firebaseUser,
+        user,
+        loading,
+        loginWithGoogle,
+        loginWithEmail,
+        registerWithEmail,
+        logout,
+        isAdmin,
+        isSuperAdmin,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+}
