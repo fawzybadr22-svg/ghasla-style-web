@@ -772,7 +772,7 @@ function AdminManagement({
     name: "",
     email: "",
     phone: "",
-    role: "admin",
+    role: "delegate",
     password: "",
   });
 
@@ -900,11 +900,13 @@ function AdminManagement({
     const colors: Record<string, string> = {
       super_admin: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
       admin: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+      delegate: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
       customer: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
     };
     const labels: Record<string, string> = {
       super_admin: getLocalizedText("سوبر أدمن", "Super Admin", "Super Admin"),
       admin: getLocalizedText("مشرف", "Admin", "Admin"),
+      delegate: getLocalizedText("مندوب", "Delegate", "Délégué"),
       customer: getLocalizedText("عميل", "Customer", "Client"),
     };
     return <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[role] || colors.customer}`}>{labels[role] || role}</span>;
@@ -1007,6 +1009,7 @@ function AdminManagement({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="delegate">{getLocalizedText("مندوب", "Delegate", "Délégué")}</SelectItem>
                     <SelectItem value="admin">{getLocalizedText("مشرف", "Admin", "Admin")}</SelectItem>
                     <SelectItem value="super_admin">{getLocalizedText("سوبر أدمن", "Super Admin", "Super Admin")}</SelectItem>
                   </SelectContent>
