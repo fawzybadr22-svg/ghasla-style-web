@@ -13,6 +13,7 @@ export function Footer() {
     { href: "/booking", label: t("nav.booking") },
     { href: "/loyalty", label: t("nav.loyalty") },
     { href: "/friends-club", label: t("nav.friendsClub") },
+    { href: "/blog", label: t("nav.blog") },
   ];
 
   const changeLanguage = (lang: string) => {
