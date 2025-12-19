@@ -68,16 +68,16 @@ export default function Contact() {
       labelAr: "الهاتف",
       labelEn: "Phone",
       labelFr: "Téléphone",
-      value: "+965 9606 8518",
-      href: "tel:+96596068518",
+      value: "+965 9796 0808",
+      href: "tel:+96597960808",
     },
     {
       icon: MessageCircle,
       labelAr: "واتساب",
       labelEn: "WhatsApp",
       labelFr: "WhatsApp",
-      value: "+965 9606 8518",
-      href: "https://wa.me/96596068518",
+      value: "+965 9796 0808",
+      href: "https://wa.me/96597960808",
     },
     {
       icon: Mail,
@@ -125,7 +125,7 @@ export default function Contact() {
               </div>
               <CardContent className="p-6">
                 <a
-                  href="https://wa.me/96596068518"
+                  href="https://wa.me/96597960808"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block"

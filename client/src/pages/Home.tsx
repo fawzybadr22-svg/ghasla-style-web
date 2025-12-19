@@ -495,7 +495,7 @@ export default function Home() {
 
                   {/* WhatsApp Quick Order */}
                   <a
-                    href={`https://wa.me/96596068518?text=${encodeURIComponent(
+                    href={`https://wa.me/96597960808?text=${encodeURIComponent(
                       getLocalizedText(
                         `مرحباً، أريد حجز ${getLocalizedText(selectedService.nameAr, selectedService.nameEn, selectedService.nameFr)} لسيارة ${carType === "suv" ? "SUV" : "سيدان"}`,
                         `Hi, I want to book ${selectedService.nameEn} for a ${carType} car`,
@@ -520,7 +520,7 @@ export default function Home() {
 
               {/* Pulsing WhatsApp Button near card */}
               <motion.a
-                href="https://wa.me/96596068518"
+                href="https://wa.me/96597960808"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="absolute -bottom-4 start-4 flex items-center gap-2 px-4 py-2 bg-[#25D366] text-white rounded-full shadow-lg"
@@ -857,7 +857,7 @@ export default function Home() {
                         </Button>
                       </Link>
                       <a
-                        href="https://wa.me/96596068518"
+                        href="https://wa.me/96597960808"
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -983,7 +983,7 @@ export default function Home() {
                       {getLocalizedText(comparison.ctaAr, comparison.ctaEn, comparison.ctaFr)}
                     </p>
                     <a
-                      href={`https://wa.me/96596068518?text=${encodeURIComponent(getLocalizedText(comparison.whatsappMessageAr, comparison.whatsappMessageEn, comparison.whatsappMessageFr))}`}
+                      href={`https://wa.me/96597960808?text=${encodeURIComponent(getLocalizedText(comparison.whatsappMessageAr, comparison.whatsappMessageEn, comparison.whatsappMessageFr))}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-block"
@@ -1044,7 +1044,7 @@ export default function Home() {
                       "Envoyez-nous votre position sur WhatsApp"
                     )}
                   </p>
-                  <a href="https://wa.me/96596068518" target="_blank" rel="noopener noreferrer">
+                  <a href="https://wa.me/96597960808" target="_blank" rel="noopener noreferrer">
                     <Button className="bg-[#25D366] hover:bg-[#128C7E] w-full" data-testid="map-whatsapp-button">
                       <SiWhatsapp className="h-4 w-4 me-2" />
                       {getLocalizedText("تواصل الآن", "Chat Now", "Discuter")}
@@ -1175,7 +1175,7 @@ export default function Home() {
                 {t("hero.bookNow")}
               </Button>
             </Link>
-            <a href="https://wa.me/96596068518" target="_blank" rel="noopener noreferrer">
+            <a href="https://wa.me/96597960808" target="_blank" rel="noopener noreferrer">
               <Button size="lg" variant="outline" className="text-lg px-8 py-6 border-white text-white hover:bg-white/10">
                 <SiWhatsapp className="h-5 w-5 me-2" />
                 {t("contact.whatsapp")}

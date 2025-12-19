@@ -38,7 +38,7 @@ export function Footer() {
             </p>
             <div className="flex items-center gap-3">
               <a
-                href="https://wa.me/96596068518"
+                href="https://wa.me/96597960808"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-[#25D366] text-white transition-transform hover:scale-105"
@@ -82,11 +82,11 @@ export function Footer() {
             <h3 className="text-lg font-semibold">{t("footer.contactInfo")}</h3>
             <div className="flex flex-col gap-3">
               <a
-                href="https://wa.me/96596068518"
+                href="https://wa.me/96597960808"
                 className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
               >
                 <Phone className="h-4 w-4" />
-                <span dir="ltr">+965 9606 8518</span>
+                <span dir="ltr">+965 9796 0808</span>
               </a>
               <a
                 href="mailto:info@ghaslastyle.com"

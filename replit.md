@@ -104,7 +104,7 @@ functions/            # Firebase Cloud Functions
 - **Session Store**: Uses connect-pg-simple for persistent sessions
 
 ### Third-Party Integrations
-- **WhatsApp Business**: Direct booking via WhatsApp links (phone: +96596068518)
+- **WhatsApp Business**: Direct booking via WhatsApp links (phone: +96597960808)
 - **Google Maps**: Embedded maps for location-based services
 - **Google Fonts**: Tajawal (Arabic) and Inter (English/French) typefaces
 
