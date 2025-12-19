@@ -41,10 +41,12 @@ export default function Offers() {
   };
 
   const getLoyaltyLabel = (scope: string) => {
-    if (scope === "inside_loyalty") {
-      return getLocalizedText("ضمن نظام الولاء", "Loyalty Program", "Programme fidélité");
-    }
-    return null;
+    const labels: Record<string, { ar: string; en: string; fr: string }> = {
+      inside_loyalty: { ar: "ضمن نظام الولاء", en: "Loyalty Program", fr: "Programme fidélité" },
+      outside_loyalty: { ar: "متاح للجميع", en: "Open to All", fr: "Ouvert à tous" },
+    };
+    const label = labels[scope] || labels.outside_loyalty;
+    return getLocalizedText(label.ar, label.en, label.fr);
   };
 
   return (
@@ -117,12 +119,13 @@ export default function Offers() {
                               <Users className="h-3 w-3" />
                               {getAudienceLabel(offer.targetAudience || "all")}
                             </Badge>
-                            {offer.loyaltyScope === "inside_loyalty" && (
-                              <Badge variant="secondary" className="flex items-center gap-1">
-                                <Gift className="h-3 w-3" />
-                                {getLoyaltyLabel(offer.loyaltyScope)}
-                              </Badge>
-                            )}
+                            <Badge 
+                              variant={offer.loyaltyScope === "inside_loyalty" ? "secondary" : "outline"} 
+                              className="flex items-center gap-1"
+                            >
+                              <Gift className="h-3 w-3" />
+                              {getLoyaltyLabel(offer.loyaltyScope || "outside_loyalty")}
+                            </Badge>
                           </div>
 
                           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
