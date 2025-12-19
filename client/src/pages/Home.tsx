@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Car, Sparkles, Crown, Calendar, MapPin, Clock, Shield, Star, 
-  Users, Truck, Phone, X, Check, ChevronDown, MessageCircle, Search, Package
+  Users, Truck, Phone, X, Check, ChevronDown, MessageCircle, Search, Package, Tag
 } from "lucide-react";
+import type { Offer } from "@shared/schema";
 import { SiWhatsapp } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -74,6 +76,11 @@ export default function Home() {
   const [service, setService] = useState("full");
   const [scheduleType, setScheduleType] = useState<"now" | "later">("now");
   const [sliderPositions, setSliderPositions] = useState<{[key: number]: number}>({1: 50, 2: 50, 3: 50});
+
+  // Fetch active offers
+  const { data: activeOffers } = useQuery<Offer[]>({
+    queryKey: ["/api/offers/active"],
+  });
   
   // Order tracking state
   const [trackingId, setTrackingId] = useState("");
@@ -537,6 +544,73 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Active Offers Section */}
+      {activeOffers && activeOffers.length > 0 && (
+        <section className="py-12 bg-gradient-to-r from-primary/10 via-chart-1/10 to-primary/10" data-testid="offers-section">
+          <div className="container mx-auto px-4">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-50px" }}
+              variants={staggerContainer}
+            >
+              <motion.div variants={fadeInUp} className="text-center mb-8">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Tag className="h-6 w-6 text-primary" />
+                  <h2 className="text-2xl md:text-3xl font-bold">
+                    {getLocalizedText("عروض حصرية", "Exclusive Offers", "Offres Exclusives")}
+                  </h2>
+                </div>
+                <p className="text-muted-foreground">
+                  {getLocalizedText("استفد من عروضنا المميزة لفترة محدودة", "Take advantage of our limited-time offers", "Profitez de nos offres à durée limitée")}
+                </p>
+              </motion.div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {activeOffers.map((offer, index) => (
+                  <motion.div key={offer.id} variants={fadeInUp}>
+                    <Card className="overflow-hidden border-2 border-primary/20 bg-gradient-to-br from-card to-card/80 hover-elevate" data-testid={`home-offer-${offer.id}`}>
+                      {offer.imageUrl && (
+                        <div className="relative h-40 overflow-hidden">
+                          <img src={offer.imageUrl} alt={getLocalizedText(offer.titleAr, offer.titleEn, offer.titleFr)} className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                        </div>
+                      )}
+                      <CardContent className={`${offer.imageUrl ? "pt-4" : "pt-6"} pb-6`}>
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <h3 className="text-lg font-bold">
+                            {getLocalizedText(offer.titleAr, offer.titleEn, offer.titleFr)}
+                          </h3>
+                          {(offer.discountPercentage || offer.discountAmountKD) && (
+                            <Badge className="bg-primary text-primary-foreground shrink-0">
+                              {offer.discountPercentage ? `${offer.discountPercentage}%` : `${offer.discountAmountKD} KD`}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-muted-foreground text-sm mb-4">
+                          {getLocalizedText(offer.descriptionAr, offer.descriptionEn, offer.descriptionFr)}
+                        </p>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {getLocalizedText("ينتهي:", "Ends:", "Expire:")} {new Date(offer.endDate).toLocaleDateString(i18n.language === "ar" ? "ar-KW" : i18n.language === "fr" ? "fr-FR" : "en-US")}
+                          </span>
+                          <a href="https://wa.me/96597960808" target="_blank" rel="noopener noreferrer">
+                            <Button size="sm" className="bg-[#25D366] hover:bg-[#20BD5A]" data-testid={`offer-book-${offer.id}`}>
+                              <SiWhatsapp className="h-4 w-4 me-1" />
+                              {getLocalizedText("احجز الآن", "Book Now", "Réserver")}
+                            </Button>
+                          </a>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </section>
+      )}
 
       {/* Track Your Order Section */}
       <section className="py-16 bg-gradient-to-br from-muted/50 to-muted/30">

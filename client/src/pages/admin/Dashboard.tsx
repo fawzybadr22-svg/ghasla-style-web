@@ -18,7 +18,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import type { ServicePackage, Order, User, LoyaltyConfig, AuditLog } from "@shared/schema";
+import type { ServicePackage, Order, User, LoyaltyConfig, AuditLog, Offer } from "@shared/schema";
+import { Tag } from "lucide-react";
 
 export default function AdminDashboard() {
   const { t, i18n } = useTranslation();
@@ -93,6 +94,11 @@ export default function AdminDashboard() {
   const { data: auditLogs, isLoading: auditLogsLoading } = useQuery<AuditLog[]>({
     queryKey: ["/api/admin/audit-logs"],
     enabled: isSuperAdmin && section === "audit",
+  });
+
+  const { data: allOffers, isLoading: offersLoading } = useQuery<Offer[]>({
+    queryKey: ["/api/admin/offers"],
+    enabled: isAdmin && section === "offers",
   });
 
   // Mutations
@@ -305,6 +311,7 @@ export default function AdminDashboard() {
     { id: "orders", icon: ShoppingBag, label: t("admin.orders") },
     { id: "customers", icon: Users, label: t("admin.customers") },
     { id: "loyalty", icon: Gift, label: t("admin.loyalty") },
+    { id: "offers", icon: Tag, label: getLocalizedText("العروض", "Offers", "Offres") },
     { id: "content", icon: FileText, label: t("admin.content") },
     { id: "analytics", icon: BarChart3, label: t("admin.analytics") },
     ...(isSuperAdmin ? [
@@ -815,6 +822,15 @@ export default function AdminDashboard() {
 
             {section === "gallery" && (
               <ContentGalleryManager getLocalizedText={getLocalizedText} firebaseUser={firebaseUser} />
+            )}
+
+            {section === "offers" && (
+              <OffersManager 
+                offers={allOffers || []} 
+                isLoading={offersLoading}
+                getLocalizedText={getLocalizedText} 
+                firebaseUser={firebaseUser} 
+              />
             )}
 
             {section === "analytics" && (
@@ -1913,6 +1929,356 @@ function ContentGalleryManager({ getLocalizedText, firebaseUser }: { getLocalize
         </div>
       ) : (
         <p className="text-muted-foreground text-center py-8">{t("common.noData")}</p>
+      )}
+    </div>
+  );
+}
+
+// Offers Manager Component
+function OffersManager({ 
+  offers, 
+  isLoading, 
+  getLocalizedText, 
+  firebaseUser 
+}: { 
+  offers: Offer[];
+  isLoading: boolean;
+  getLocalizedText: (ar: string, en: string, fr: string) => string; 
+  firebaseUser: any;
+}) {
+  const { t, i18n } = useTranslation();
+  const { toast } = useToast();
+  const [editing, setEditing] = useState<Offer | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    titleAr: "",
+    titleEn: "",
+    titleFr: "",
+    descriptionAr: "",
+    descriptionEn: "",
+    descriptionFr: "",
+    discountPercentage: "",
+    discountAmountKD: "",
+    imageUrl: "",
+    startDate: "",
+    endDate: "",
+    isActive: true,
+  });
+
+  const resetForm = () => {
+    setForm({
+      titleAr: "",
+      titleEn: "",
+      titleFr: "",
+      descriptionAr: "",
+      descriptionEn: "",
+      descriptionFr: "",
+      discountPercentage: "",
+      discountAmountKD: "",
+      imageUrl: "",
+      startDate: "",
+      endDate: "",
+      isActive: true,
+    });
+    setEditing(null);
+    setShowForm(false);
+  };
+
+  const createMutation = useMutation({
+    mutationFn: async (data: typeof form) => {
+      const res = await fetch("/api/admin/offers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...data,
+          discountPercentage: data.discountPercentage ? parseFloat(data.discountPercentage) : null,
+          discountAmountKD: data.discountAmountKD ? parseFloat(data.discountAmountKD) : null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to create offer");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/offers"] });
+      toast({ title: getLocalizedText("تم إنشاء العرض", "Offer created", "Offre créée") });
+      resetForm();
+    },
+    onError: () => {
+      toast({ title: getLocalizedText("خطأ في الإنشاء", "Creation failed", "Échec de la création"), variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: typeof form }) => {
+      const res = await fetch(`/api/admin/offers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...data,
+          discountPercentage: data.discountPercentage ? parseFloat(data.discountPercentage) : null,
+          discountAmountKD: data.discountAmountKD ? parseFloat(data.discountAmountKD) : null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update offer");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/offers"] });
+      toast({ title: getLocalizedText("تم التحديث", "Updated", "Mis à jour") });
+      resetForm();
+    },
+    onError: () => {
+      toast({ title: getLocalizedText("خطأ في التحديث", "Update failed", "Échec de la mise à jour"), variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/admin/offers/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete offer");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/offers"] });
+      toast({ title: getLocalizedText("تم الحذف", "Deleted", "Supprimé") });
+    },
+    onError: () => {
+      toast({ title: getLocalizedText("خطأ في الحذف", "Delete failed", "Échec de la suppression"), variant: "destructive" });
+    },
+  });
+
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      const res = await fetch(`/api/admin/offers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive }),
+      });
+      if (!res.ok) throw new Error("Failed to update offer");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/offers"] });
+      toast({ title: getLocalizedText("تم التحديث", "Updated", "Mis à jour") });
+    },
+  });
+
+  const formatDate = (date: string | Date) => {
+    const d = new Date(date);
+    return d.toISOString().split("T")[0];
+  };
+
+  const isOfferActive = (offer: Offer) => {
+    if (!offer.isActive) return false;
+    const now = new Date();
+    return new Date(offer.startDate) <= now && new Date(offer.endDate) >= now;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl font-bold">{getLocalizedText("العروض", "Offers", "Offres")}</h1>
+        <Button onClick={() => { resetForm(); setShowForm(true); }} data-testid="button-add-offer">
+          <Plus className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+          {getLocalizedText("إضافة عرض", "Add Offer", "Ajouter une offre")}
+        </Button>
+      </div>
+
+      {showForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{editing ? getLocalizedText("تعديل العرض", "Edit Offer", "Modifier l'offre") : getLocalizedText("إضافة عرض جديد", "Add New Offer", "Ajouter une nouvelle offre")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>{getLocalizedText("العنوان (عربي)", "Title (Arabic)", "Titre (Arabe)")}</Label>
+                <Input value={form.titleAr} onChange={(e) => setForm({ ...form, titleAr: e.target.value })} data-testid="input-offer-title-ar" />
+              </div>
+              <div>
+                <Label>{getLocalizedText("العنوان (إنجليزي)", "Title (English)", "Titre (Anglais)")}</Label>
+                <Input value={form.titleEn} onChange={(e) => setForm({ ...form, titleEn: e.target.value })} data-testid="input-offer-title-en" />
+              </div>
+              <div>
+                <Label>{getLocalizedText("العنوان (فرنسي)", "Title (French)", "Titre (Français)")}</Label>
+                <Input value={form.titleFr} onChange={(e) => setForm({ ...form, titleFr: e.target.value })} data-testid="input-offer-title-fr" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>{getLocalizedText("الوصف (عربي)", "Description (Arabic)", "Description (Arabe)")}</Label>
+                <Input value={form.descriptionAr} onChange={(e) => setForm({ ...form, descriptionAr: e.target.value })} data-testid="input-offer-desc-ar" />
+              </div>
+              <div>
+                <Label>{getLocalizedText("الوصف (إنجليزي)", "Description (English)", "Description (Anglais)")}</Label>
+                <Input value={form.descriptionEn} onChange={(e) => setForm({ ...form, descriptionEn: e.target.value })} data-testid="input-offer-desc-en" />
+              </div>
+              <div>
+                <Label>{getLocalizedText("الوصف (فرنسي)", "Description (French)", "Description (Français)")}</Label>
+                <Input value={form.descriptionFr} onChange={(e) => setForm({ ...form, descriptionFr: e.target.value })} data-testid="input-offer-desc-fr" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>{getLocalizedText("نسبة الخصم (%)", "Discount Percentage (%)", "Pourcentage de réduction (%)")}</Label>
+                <Input type="number" value={form.discountPercentage} onChange={(e) => setForm({ ...form, discountPercentage: e.target.value })} placeholder="0-100" data-testid="input-offer-discount-percent" />
+              </div>
+              <div>
+                <Label>{getLocalizedText("مبلغ الخصم (د.ك)", "Discount Amount (KD)", "Montant de réduction (KD)")}</Label>
+                <Input type="number" value={form.discountAmountKD} onChange={(e) => setForm({ ...form, discountAmountKD: e.target.value })} placeholder="0.000" step="0.001" data-testid="input-offer-discount-amount" />
+              </div>
+              <div>
+                <Label>{getLocalizedText("رابط الصورة", "Image URL", "URL de l'image")}</Label>
+                <Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://..." data-testid="input-offer-image" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>{getLocalizedText("تاريخ البدء", "Start Date", "Date de début")}</Label>
+                <Input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} data-testid="input-offer-start-date" />
+              </div>
+              <div>
+                <Label>{getLocalizedText("تاريخ الانتهاء", "End Date", "Date de fin")}</Label>
+                <Input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} data-testid="input-offer-end-date" />
+              </div>
+              <div className="flex items-end">
+                <Label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={form.isActive} 
+                    onChange={(e) => setForm({ ...form, isActive: e.target.checked })} 
+                    className="w-4 h-4"
+                    data-testid="input-offer-active"
+                  />
+                  {getLocalizedText("نشط", "Active", "Actif")}
+                </Label>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 flex-wrap">
+              <Button 
+                onClick={() => editing ? updateMutation.mutate({ id: editing.id, data: form }) : createMutation.mutate(form)} 
+                disabled={createMutation.isPending || updateMutation.isPending || !form.titleAr || !form.startDate || !form.endDate} 
+                data-testid="button-save-offer"
+              >
+                <Save className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                {getLocalizedText("حفظ", "Save", "Enregistrer")}
+              </Button>
+              <Button variant="outline" onClick={resetForm} data-testid="button-cancel-offer">
+                <X className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+                {getLocalizedText("إلغاء", "Cancel", "Annuler")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {isLoading ? (
+        <div className="space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}</div>
+      ) : offers && offers.length > 0 ? (
+        <div className="space-y-4">
+          {offers.map((offer) => (
+            <Card key={offer.id} className={`${!offer.isActive ? "opacity-60" : ""}`} data-testid={`offer-card-${offer.id}`}>
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <h3 className="text-lg font-semibold">{getLocalizedText(offer.titleAr, offer.titleEn, offer.titleFr)}</h3>
+                      {isOfferActive(offer) ? (
+                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                          {getLocalizedText("نشط الآن", "Active Now", "Actif maintenant")}
+                        </Badge>
+                      ) : offer.isActive ? (
+                        <Badge variant="secondary">{getLocalizedText("مفعّل", "Enabled", "Activé")}</Badge>
+                      ) : (
+                        <Badge variant="outline">{getLocalizedText("متوقف", "Disabled", "Désactivé")}</Badge>
+                      )}
+                    </div>
+                    <p className="text-muted-foreground text-sm mb-2">{getLocalizedText(offer.descriptionAr, offer.descriptionEn, offer.descriptionFr)}</p>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                      {offer.discountPercentage && (
+                        <span className="text-primary font-medium">{offer.discountPercentage}% {getLocalizedText("خصم", "off", "de réduction")}</span>
+                      )}
+                      {offer.discountAmountKD && (
+                        <span className="text-primary font-medium">{offer.discountAmountKD} KD {getLocalizedText("خصم", "off", "de réduction")}</span>
+                      )}
+                      <span>
+                        {formatDate(offer.startDate)} - {formatDate(offer.endDate)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      size="sm" 
+                      variant={offer.isActive ? "secondary" : "default"}
+                      onClick={() => toggleActiveMutation.mutate({ id: offer.id, isActive: !offer.isActive })}
+                      data-testid={`button-toggle-offer-${offer.id}`}
+                    >
+                      {offer.isActive ? (
+                        <>
+                          <Ban className="h-4 w-4 ltr:mr-1 rtl:ml-1" />
+                          {getLocalizedText("إيقاف", "Disable", "Désactiver")}
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4 ltr:mr-1 rtl:ml-1" />
+                          {getLocalizedText("تفعيل", "Enable", "Activer")}
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      size="icon" 
+                      variant="outline" 
+                      onClick={() => { 
+                        setEditing(offer); 
+                        setForm({
+                          titleAr: offer.titleAr,
+                          titleEn: offer.titleEn,
+                          titleFr: offer.titleFr,
+                          descriptionAr: offer.descriptionAr,
+                          descriptionEn: offer.descriptionEn,
+                          descriptionFr: offer.descriptionFr,
+                          discountPercentage: offer.discountPercentage?.toString() || "",
+                          discountAmountKD: offer.discountAmountKD?.toString() || "",
+                          imageUrl: offer.imageUrl || "",
+                          startDate: formatDate(offer.startDate),
+                          endDate: formatDate(offer.endDate),
+                          isActive: offer.isActive,
+                        });
+                        setShowForm(true);
+                      }}
+                      data-testid={`button-edit-offer-${offer.id}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      size="icon" 
+                      variant="destructive" 
+                      onClick={() => { 
+                        if (confirm(getLocalizedText("هل أنت متأكد من حذف هذا العرض؟", "Are you sure you want to delete this offer?", "Êtes-vous sûr de vouloir supprimer cette offre?"))) {
+                          deleteMutation.mutate(offer.id);
+                        }
+                      }}
+                      data-testid={`button-delete-offer-${offer.id}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="pt-6 text-center py-12">
+            <Tag className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground">{getLocalizedText("لا توجد عروض", "No offers yet", "Pas d'offres pour le moment")}</p>
+            <Button className="mt-4" onClick={() => setShowForm(true)} data-testid="button-add-first-offer">
+              <Plus className="h-4 w-4 ltr:mr-2 rtl:ml-2" />
+              {getLocalizedText("إضافة أول عرض", "Add First Offer", "Ajouter la première offre")}
+            </Button>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
