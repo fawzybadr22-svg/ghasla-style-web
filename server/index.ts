@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import path from "path";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -104,6 +105,9 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+
+// Serve uploaded files statically
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // Rate limiters are now in server/security.ts and applied in server/routes.ts
 

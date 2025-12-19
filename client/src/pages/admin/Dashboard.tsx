@@ -1950,6 +1950,8 @@ function OffersManager({
   const { toast } = useToast();
   const [editing, setEditing] = useState<Offer | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     titleAr: "",
     titleEn: "",

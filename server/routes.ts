@@ -2,6 +2,9 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import { 
   insertServicePackageSchema, insertOrderSchema, insertContactMessageSchema,
   insertBlogPostSchema, insertTestimonialSchema, insertGalleryItemSchema,
@@ -21,6 +24,36 @@ import {
   internalLimiter, 
   contactLimiter 
 } from "./security";
+
+// Configure multer for file uploads
+const uploadsDir = path.join(process.cwd(), "uploads", "offers");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const offerImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, `offer-${uniqueSuffix}${ext}`);
+  },
+});
+
+const uploadOfferImage = multer({
+  storage: offerImageStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPEG, PNG, WebP, and GIF images are allowed"));
+    }
+  },
+});
 
 // Default service packages for seeding
 const defaultPackages = [
@@ -1131,6 +1164,19 @@ export async function registerRoutes(
     try {
       await storage.deleteOffer(req.params.id);
       res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Upload offer image
+  app.post("/api/admin/offers/upload-image", uploadOfferImage.single("image"), (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+      const imageUrl = `/uploads/offers/${req.file.filename}`;
+      res.json({ imageUrl });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
