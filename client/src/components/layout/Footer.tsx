@@ -99,10 +99,10 @@ export function Footer() {
                 <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <span>
                   {i18n.language === "ar" 
-                    ? "الكويت - جميع المناطق" 
+                    ? "الكويت - 19 منطقة متاحة" 
                     : i18n.language === "fr"
-                    ? "Koweït - Toutes les régions"
-                    : "Kuwait - All Areas"}
+                    ? "Koweït - 19 zones disponibles"
+                    : "Kuwait - 19 Areas Available"}
                 </span>
               </div>
             </div>

@@ -113,7 +113,7 @@ const resources = {
         mission: "مهمتنا",
         missionText: "نسعى لتقديم أفضل خدمة غسيل سيارات متنقلة في الكويت، مع الحفاظ على البيئة واستخدام منتجات صديقة للبيئة.",
         coverage: "تغطية الخدمة",
-        coverageText: "نغطي جميع مناطق الكويت بما في ذلك العاصمة، حولي، الفروانية، الأحمدي، الجهراء، ومبارك الكبير.",
+        coverageText: "نغطي حالياً مناطق مختارة في الكويت تشمل السالمية، الروضة، السرة، كيفان، الخالدية، والمزيد. خدمات إضافية قريباً!",
         quality: "جودة مضمونة",
         qualityText: "فريق مدرب احترافياً، معدات حديثة، ومنتجات عالية الجودة لضمان نظافة سيارتك."
       },
@@ -313,7 +313,7 @@ const resources = {
         mission: "Our Mission",
         missionText: "We strive to provide the best mobile car wash service in Kuwait, while protecting the environment using eco-friendly products.",
         coverage: "Service Coverage",
-        coverageText: "We cover all areas in Kuwait including Capital, Hawalli, Farwaniya, Ahmadi, Jahra, and Mubarak Al-Kabeer.",
+        coverageText: "We currently cover select areas in Kuwait including Salmiya, Rawda, Surra, Kaifan, Khaldiya, and more. Additional areas coming soon!",
         quality: "Quality Guaranteed",
         qualityText: "Professionally trained team, modern equipment, and high-quality products to ensure your car's cleanliness."
       },
@@ -513,7 +513,7 @@ const resources = {
         mission: "Notre Mission",
         missionText: "Nous nous efforçons de fournir le meilleur service de lavage auto mobile au Koweït, tout en protégeant l'environnement avec des produits écologiques.",
         coverage: "Zone de Service",
-        coverageText: "Nous couvrons toutes les régions du Koweït incluant la Capitale, Hawalli, Farwaniya, Ahmadi, Jahra et Mubarak Al-Kabeer.",
+        coverageText: "Nous couvrons actuellement des zones sélectionnées au Koweït incluant Salmiya, Rawda, Surra, Kaifan, Khaldiya et plus. Zones supplémentaires bientôt!",
         quality: "Qualité Garantie",
         qualityText: "Équipe formée professionnellement, équipement moderne et produits de haute qualité pour assurer la propreté de votre voiture."
       },

@@ -49,12 +49,12 @@ export default function About() {
   ];
 
   const areas = [
-    { ar: "العاصمة", en: "Capital", fr: "Capitale" },
-    { ar: "حولي", en: "Hawalli", fr: "Hawalli" },
-    { ar: "الفروانية", en: "Farwaniya", fr: "Farwaniya" },
-    { ar: "الأحمدي", en: "Ahmadi", fr: "Ahmadi" },
-    { ar: "الجهراء", en: "Jahra", fr: "Jahra" },
-    { ar: "مبارك الكبير", en: "Mubarak Al-Kabeer", fr: "Mubarak Al-Kabeer" },
+    { ar: "السالمية", en: "Salmiya", fr: "Salmiya" },
+    { ar: "الروضة", en: "Rawda", fr: "Rawda" },
+    { ar: "السرة", en: "Surra", fr: "Surra" },
+    { ar: "كيفان", en: "Kaifan", fr: "Kaifan" },
+    { ar: "الخالدية", en: "Khaldiya", fr: "Khaldiya" },
+    { ar: "القادسية", en: "Qadisiya", fr: "Qadisiya" },
   ];
 
   return (

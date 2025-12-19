@@ -92,7 +92,7 @@ export default function Contact() {
       labelAr: "الموقع",
       labelEn: "Location",
       labelFr: "Emplacement",
-      value: getLocalizedText("الكويت - جميع المناطق", "Kuwait - All Areas", "Koweït - Toutes Régions"),
+      value: getLocalizedText("الكويت - 19 منطقة متاحة", "Kuwait - 19 Areas Available", "Koweït - 19 zones disponibles"),
       href: null,
     },
   ];

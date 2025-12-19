@@ -381,7 +381,7 @@ export default function Home() {
                 </div>
                 <div className="flex items-center gap-2 text-white/70">
                   <MapPin className="h-5 w-5 text-primary" />
-                  <span>{getLocalizedText("جميع مناطق الكويت", "All Kuwait Areas", "Tout le Koweït")}</span>
+                  <span>{getLocalizedText("19 منطقة متاحة", "19 Areas Available", "19 zones disponibles")}</span>
                 </div>
               </motion.div>
             </motion.div>
@@ -727,9 +727,9 @@ export default function Home() {
             </motion.h2>
             <motion.p variants={fadeInUp} className="text-lg text-muted-foreground max-w-2xl mx-auto">
               {getLocalizedText(
-                "فريقنا المحترف يغطي جميع مناطق الكويت بسيارات مجهزة بأحدث المعدات",
-                "Our professional team covers all of Kuwait with fully equipped vehicles",
-                "Notre équipe professionnelle couvre tout le Koweït avec des véhicules équipés"
+                "فريقنا المحترف يغطي 19 منطقة في الكويت بسيارات مجهزة بأحدث المعدات",
+                "Our professional team covers 19 areas in Kuwait with fully equipped vehicles",
+                "Notre équipe professionnelle couvre 19 zones au Koweït avec des véhicules équipés"
               )}
             </motion.p>
           </motion.div>
