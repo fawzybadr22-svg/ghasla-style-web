@@ -2187,7 +2187,17 @@ function OffersManager({
             </div>
             <div className="flex items-center gap-4 flex-wrap">
               <Button 
-                onClick={() => editing ? updateMutation.mutate({ id: editing.id, data: form }) : createMutation.mutate(form)} 
+                onClick={() => {
+                  if (form.startDate && form.endDate && new Date(form.endDate) < new Date(form.startDate)) {
+                    toast({ 
+                      title: getLocalizedText("خطأ في التاريخ", "Date Error", "Erreur de date"),
+                      description: getLocalizedText("تاريخ الانتهاء يجب أن يكون بعد تاريخ البدء", "End date must be after start date", "La date de fin doit être après la date de début"),
+                      variant: "destructive" 
+                    });
+                    return;
+                  }
+                  editing ? updateMutation.mutate({ id: editing.id, data: form }) : createMutation.mutate(form);
+                }} 
                 disabled={createMutation.isPending || updateMutation.isPending || !form.titleAr || !form.startDate || !form.endDate} 
                 data-testid="button-save-offer"
               >
