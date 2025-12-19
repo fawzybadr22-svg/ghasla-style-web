@@ -8,11 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
-import type { ServicePackage } from "@shared/schema";
+import type { ServicePackage, ServiceArea } from "@shared/schema";
 
 const defaultPackages: ServicePackage[] = [
   { id: "1", nameAr: "غسيل خارجي", nameEn: "Exterior Wash", nameFr: "Lavage Extérieur", descriptionAr: "", descriptionEn: "", descriptionFr: "", priceSedanKD: 3, priceSuvKD: 4, estimatedMinutes: 30, category: "exterior", isActive: true, createdAt: new Date() },
@@ -57,9 +57,24 @@ export default function Booking() {
     queryKey: ["/api/packages"],
   });
 
-  const { data: areas } = useQuery<string[]>({
+  const { data: areasData, isLoading: areasLoading } = useQuery<ServiceArea[]>({
     queryKey: ["/api/areas"],
   });
+  
+  // Default fallback areas in case API fails
+  const defaultAvailableAreas: ServiceArea[] = [
+    { nameAr: "السالمية", nameEn: "Salmiya", nameFr: "Salmiya", isAvailable: true },
+    { nameAr: "الروضة", nameEn: "Rawda", nameFr: "Rawda", isAvailable: true },
+    { nameAr: "السرة", nameEn: "Surra", nameFr: "Surra", isAvailable: true },
+  ];
+  const defaultComingSoonAreas: ServiceArea[] = [
+    { nameAr: "حولي", nameEn: "Hawalli", nameFr: "Hawalli", isAvailable: false },
+    { nameAr: "الفروانية", nameEn: "Farwaniya", nameFr: "Farwaniya", isAvailable: false },
+  ];
+  
+  // Separate available and coming soon areas
+  const availableAreas = areasData?.filter(a => a.isAvailable) || defaultAvailableAreas;
+  const comingSoonAreas = areasData?.filter(a => !a.isAvailable) || defaultComingSoonAreas;
 
   const { data: loyaltyConfigData } = useQuery<{
     conversionRate: number;
@@ -70,7 +85,10 @@ export default function Booking() {
   });
 
   const displayPackages = packages?.length ? packages : defaultPackages;
-  const displayAreas = areas || ["Capital", "Hawalli", "Farwaniya", "Ahmadi", "Jahra", "Mubarak Al-Kabeer"];
+  
+  // Check if selected area is available now
+  const selectedAreaData = areasData?.find(a => a.nameEn === formData.area);
+  const isAreaAvailable = selectedAreaData?.isAvailable ?? true;
   const selectedPackage = displayPackages.find(p => p.id === formData.packageId);
   const basePrice = selectedPackage ? (formData.carType === "suv" ? selectedPackage.priceSuvKD : selectedPackage.priceSedanKD) : 0;
   
@@ -429,15 +447,48 @@ export default function Booking() {
                       <SelectValue placeholder={getLocalizedText("اختر المنطقة", "Select area", "Sélectionner la zone")} />
                     </SelectTrigger>
                     <SelectContent className="max-h-[300px]">
-                      {displayAreas.map((area) => (
-                        <SelectItem key={area} value={area}>
-                          {area}
-                        </SelectItem>
-                      ))}
+                      <SelectGroup>
+                        <SelectLabel className="text-green-600 font-semibold">
+                          {getLocalizedText("متاحة الآن", "Available Now", "Disponible maintenant")}
+                        </SelectLabel>
+                        {availableAreas.map((area) => (
+                          <SelectItem key={area.nameEn} value={area.nameEn} data-testid={`area-available-${area.nameEn}`}>
+                            <span className="flex items-center gap-2">
+                              <Check className="h-3 w-3 text-green-600" />
+                              {getLocalizedText(area.nameAr, area.nameEn, area.nameFr)}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                      <SelectGroup>
+                        <SelectLabel className="text-orange-500 font-semibold">
+                          {getLocalizedText("متاحة قريباً", "Available Soon", "Bientôt disponible")}
+                        </SelectLabel>
+                        {comingSoonAreas.map((area) => (
+                          <SelectItem key={area.nameEn} value={area.nameEn} data-testid={`area-soon-${area.nameEn}`}>
+                            <span className="flex items-center gap-2 text-muted-foreground">
+                              <Clock className="h-3 w-3 text-orange-500" />
+                              {getLocalizedText(area.nameAr, area.nameEn, area.nameFr)}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     </SelectContent>
                   </Select>
                   {fieldErrors.area && (
                     <p className="text-sm text-destructive">{fieldErrors.area}</p>
+                  )}
+                  {formData.area && !isAreaAvailable && (
+                    <div className="p-3 rounded-md bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800">
+                      <p className="text-sm text-orange-700 dark:text-orange-400 flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        {getLocalizedText(
+                          "الخدمة متاحة قريباً في هذه المنطقة. سجل طلبك وسنشعرك فور تغطية منطقتك.",
+                          "Service coming soon to this area. Register your request and we'll notify you when coverage begins.",
+                          "Service bientôt disponible dans cette zone. Inscrivez-vous et nous vous informerons dès le début de la couverture."
+                        )}
+                      </p>
+                    </div>
                   )}
                 </div>
 

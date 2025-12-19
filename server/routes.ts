@@ -5,7 +5,7 @@ import { z } from "zod";
 import { 
   insertServicePackageSchema, insertOrderSchema, insertContactMessageSchema,
   insertBlogPostSchema, insertTestimonialSchema, insertGalleryItemSchema,
-  kuwaitAreas
+  getServiceAreas
 } from "@shared/schema";
 import { 
   setSuperAdmin, 
@@ -232,9 +232,10 @@ export async function registerRoutes(
     }
   });
 
-  // Kuwait Areas (public)
+  // Kuwait Areas (public) - with availability status
   app.get("/api/areas", (req, res) => {
-    res.json(kuwaitAreas);
+    const areas = getServiceAreas();
+    res.json(areas);
   });
 
   // Blog Posts (public)

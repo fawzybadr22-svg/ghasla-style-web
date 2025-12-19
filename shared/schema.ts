@@ -260,12 +260,77 @@ export const insertOrderRatingSchema = createInsertSchema(orderRatings).omit({ i
 export type InsertOrderRating = z.infer<typeof insertOrderRatingSchema>;
 export type OrderRating = typeof orderRatings.$inferSelect;
 
-// Kuwait Areas for service validation
+// Kuwait Areas for service validation - with availability status
+// Areas currently available for service
+export const availableAreasNow = [
+  { nameAr: "السلام", nameEn: "Al-Salam", nameFr: "Al-Salam" },
+  { nameAr: "السالمية", nameEn: "Salmiya", nameFr: "Salmiya" },
+  { nameAr: "الدسمة", nameEn: "Dasma", nameFr: "Dasma" },
+  { nameAr: "الدعية", nameEn: "Daiya", nameFr: "Daiya" },
+  { nameAr: "الشامية", nameEn: "Shamiya", nameFr: "Shamiya" },
+  { nameAr: "الروضة", nameEn: "Rawda", nameFr: "Rawda" },
+  { nameAr: "العديلية", nameEn: "Adiliya", nameFr: "Adiliya" },
+  { nameAr: "كيفان", nameEn: "Kaifan", nameFr: "Kaifan" },
+  { nameAr: "الخالدية", nameEn: "Khaldiya", nameFr: "Khaldiya" },
+  { nameAr: "القادسية", nameEn: "Qadsiya", nameFr: "Qadsiya" },
+  { nameAr: "الفيحاء", nameEn: "Faiha", nameFr: "Faiha" },
+  { nameAr: "المنصورية", nameEn: "Mansouriya", nameFr: "Mansouriya" },
+  { nameAr: "النزهة", nameEn: "Nuzha", nameFr: "Nuzha" },
+  { nameAr: "اليرموك", nameEn: "Yarmouk", nameFr: "Yarmouk" },
+  { nameAr: "السرة", nameEn: "Surra", nameFr: "Surra" },
+  { nameAr: "قرطبة", nameEn: "Qortuba", nameFr: "Qortuba" },
+  { nameAr: "الشعب البحري", nameEn: "Shaab Al-Bahri", nameFr: "Shaab Al-Bahri" },
+  { nameAr: "ضاحية عبد الله السالم", nameEn: "Abdullah Al-Salem", nameFr: "Abdullah Al-Salem" },
+  { nameAr: "الشويخ السكنية", nameEn: "Shuwaikh Residential", nameFr: "Shuwaikh Résidentiel" },
+] as const;
+
+// Areas coming soon
+export const areasComingSoon = [
+  { nameAr: "حولي", nameEn: "Hawalli", nameFr: "Hawalli" },
+  { nameAr: "الفروانية", nameEn: "Farwaniya", nameFr: "Farwaniya" },
+  { nameAr: "الأحمدي", nameEn: "Ahmadi", nameFr: "Ahmadi" },
+  { nameAr: "الجهراء", nameEn: "Jahra", nameFr: "Jahra" },
+  { nameAr: "مبارك الكبير", nameEn: "Mubarak Al-Kabeer", nameFr: "Mubarak Al-Kabeer" },
+  { nameAr: "العاصمة", nameEn: "Capital", nameFr: "Capitale" },
+  { nameAr: "صباح السالم", nameEn: "Sabah Al-Salem", nameFr: "Sabah Al-Salem" },
+  { nameAr: "المنقف", nameEn: "Mangaf", nameFr: "Mangaf" },
+  { nameAr: "الفحيحيل", nameEn: "Fahaheel", nameFr: "Fahaheel" },
+  { nameAr: "المهبولة", nameEn: "Mahboula", nameFr: "Mahboula" },
+  { nameAr: "الجابرية", nameEn: "Jabriya", nameFr: "Jabriya" },
+  { nameAr: "مشرف", nameEn: "Mishref", nameFr: "Mishref" },
+  { nameAr: "سلوى", nameEn: "Salwa", nameFr: "Salwa" },
+  { nameAr: "الرميثية", nameEn: "Rumaithiya", nameFr: "Rumaithiya" },
+  { nameAr: "بيان", nameEn: "Bayan", nameFr: "Bayan" },
+  { nameAr: "الفنطاس", nameEn: "Fintas", nameFr: "Fintas" },
+  { nameAr: "أبو حليفة", nameEn: "Abu Halifa", nameFr: "Abu Halifa" },
+  { nameAr: "العقيلة", nameEn: "Egaila", nameFr: "Egaila" },
+  { nameAr: "الصبحية", nameEn: "Subahiya", nameFr: "Subahiya" },
+  { nameAr: "جليب الشيوخ", nameEn: "Jleeb Al-Shuyoukh", nameFr: "Jleeb Al-Shuyoukh" },
+  { nameAr: "خيطان", nameEn: "Khaitan", nameFr: "Khaitan" },
+  { nameAr: "الأندلس", nameEn: "Andalus", nameFr: "Andalus" },
+  { nameAr: "الرقعي", nameEn: "Riggae", nameFr: "Riggae" },
+] as const;
+
+// Combined areas for API/validation - use English names as identifiers
 export const kuwaitAreas = [
-  "Ahmadi", "Farwaniya", "Hawalli", "Jahra", "Mubarak Al-Kabeer", "Capital",
-  "Salmiya", "Kuwait City", "Sabah Al-Salem", "Mangaf", "Fahaheel", "Mahboula",
-  "Jabriya", "Mishref", "Salwa", "Rumaithiya", "Bayan", "Fintas", "Abu Halifa",
-  "Egaila", "Subahiya", "Jleeb Al-Shuyoukh", "Khaitan", "Andalus", "Riggae"
+  ...availableAreasNow.map(a => a.nameEn),
+  ...areasComingSoon.map(a => a.nameEn)
 ] as const;
 
 export type KuwaitArea = typeof kuwaitAreas[number];
+
+// Service area with availability info
+export interface ServiceArea {
+  nameAr: string;
+  nameEn: string;
+  nameFr: string;
+  isAvailable: boolean;
+}
+
+// Get all areas with availability status
+export function getServiceAreas(): ServiceArea[] {
+  return [
+    ...availableAreasNow.map(a => ({ ...a, isAvailable: true })),
+    ...areasComingSoon.map(a => ({ ...a, isAvailable: false })),
+  ];
+}
