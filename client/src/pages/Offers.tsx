@@ -88,9 +88,9 @@ export default function Offers() {
               <motion.div variants={staggerContainer} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {offers.map((offer) => (
                   <motion.div key={offer.id} variants={fadeInUp}>
-                    <Card className="overflow-hidden h-full border-2 border-primary/10 hover-elevate" data-testid={`offer-page-card-${offer.id}`}>
+                    <Card className="border-2 border-primary/10 hover-elevate" data-testid={`offer-page-card-${offer.id}`}>
                       {offer.imageUrl && (
-                        <div className="relative h-48 overflow-hidden">
+                        <div className="relative h-48 overflow-hidden rounded-t-lg">
                           <img 
                             src={offer.imageUrl} 
                             alt={getLocalizedText(offer.titleAr, offer.titleEn, offer.titleFr)} 
@@ -106,38 +106,36 @@ export default function Offers() {
                           )}
                         </div>
                       )}
-                      <CardContent className={`${offer.imageUrl ? "pt-4" : "pt-6"} pb-6 flex flex-col h-full`}>
-                        <div className="flex-1">
-                          <h3 className="text-xl font-bold mb-2">
-                            {getLocalizedText(offer.titleAr, offer.titleEn, offer.titleFr)}
-                          </h3>
-                          <p className="text-muted-foreground mb-4">
-                            {getLocalizedText(offer.descriptionAr, offer.descriptionEn, offer.descriptionFr)}
-                          </p>
-                          
-                          <div className="flex flex-wrap gap-2 mb-4">
-                            <Badge variant="outline" className="flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {getAudienceLabel(offer.targetAudience || "all")}
-                            </Badge>
-                            <Badge 
-                              variant={offer.loyaltyScope === "inside_loyalty" ? "secondary" : "outline"} 
-                              className="flex items-center gap-1"
-                            >
-                              <Gift className="h-3 w-3" />
-                              {getLoyaltyLabel(offer.loyaltyScope || "outside_loyalty")}
-                            </Badge>
-                          </div>
-
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                            <Calendar className="h-4 w-4" />
-                            <span>
-                              {getLocalizedText("صالح حتى:", "Valid until:", "Valable jusqu'au:")} {new Date(offer.endDate).toLocaleDateString(i18n.language === "ar" ? "ar-KW" : i18n.language === "fr" ? "fr-FR" : "en-US")}
-                            </span>
-                          </div>
+                      <CardContent className={`${offer.imageUrl ? "pt-4" : "pt-6"} pb-6`}>
+                        <h3 className="text-xl font-bold mb-2">
+                          {getLocalizedText(offer.titleAr, offer.titleEn, offer.titleFr)}
+                        </h3>
+                        <p className="text-muted-foreground mb-4">
+                          {getLocalizedText(offer.descriptionAr, offer.descriptionEn, offer.descriptionFr)}
+                        </p>
+                        
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {getAudienceLabel(offer.targetAudience || "all")}
+                          </Badge>
+                          <Badge 
+                            variant={offer.loyaltyScope === "inside_loyalty" ? "secondary" : "outline"} 
+                            className="flex items-center gap-1"
+                          >
+                            <Gift className="h-3 w-3" />
+                            {getLoyaltyLabel(offer.loyaltyScope || "outside_loyalty")}
+                          </Badge>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                          <Calendar className="h-4 w-4" />
+                          <span>
+                            {getLocalizedText("صالح حتى:", "Valid until:", "Valable jusqu'au:")} {new Date(offer.endDate).toLocaleDateString(i18n.language === "ar" ? "ar-KW" : i18n.language === "fr" ? "fr-FR" : "en-US")}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-2 mt-4">
                           <Link href="/booking" className="flex-1">
                             <Button className="w-full" data-testid={`offer-page-book-regular-${offer.id}`}>
                               <ShoppingCart className="h-5 w-5 me-2" />
