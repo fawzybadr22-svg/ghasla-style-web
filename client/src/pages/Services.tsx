@@ -30,7 +30,7 @@ const defaultPackages: ServicePackage[] = [
     estimatedMinutes: 30,
     category: "exterior",
     isActive: true,
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(),
   },
   {
     id: "2",
@@ -45,7 +45,7 @@ const defaultPackages: ServicePackage[] = [
     estimatedMinutes: 45,
     category: "interior",
     isActive: true,
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(),
   },
   {
     id: "3",
@@ -60,7 +60,7 @@ const defaultPackages: ServicePackage[] = [
     estimatedMinutes: 60,
     category: "full",
     isActive: true,
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(),
   },
   {
     id: "4",
@@ -75,7 +75,7 @@ const defaultPackages: ServicePackage[] = [
     estimatedMinutes: 120,
     category: "vip",
     isActive: true,
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(),
   },
   {
     id: "5",
@@ -90,7 +90,7 @@ const defaultPackages: ServicePackage[] = [
     estimatedMinutes: 30,
     category: "monthly",
     isActive: true,
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(),
   },
 ];
 
