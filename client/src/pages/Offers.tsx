@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Tag, Calendar, Users, Gift } from "lucide-react";
+import { Link } from "wouter";
+import { Tag, Calendar, Users, Gift, ShoppingCart } from "lucide-react";
 import { SiWhatsapp } from "react-icons/si";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -136,17 +137,25 @@ export default function Offers() {
                           </div>
                         </div>
 
-                        <a 
-                          href="https://wa.me/96597960808" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="block"
-                        >
-                          <Button className="w-full bg-[#25D366] hover:bg-[#20BD5A]" data-testid={`offer-page-book-${offer.id}`}>
-                            <SiWhatsapp className="h-5 w-5 me-2" />
-                            {getLocalizedText("احجز الآن عبر واتساب", "Book Now via WhatsApp", "Réserver via WhatsApp")}
-                          </Button>
-                        </a>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Link href="/booking" className="flex-1">
+                            <Button className="w-full" data-testid={`offer-page-book-regular-${offer.id}`}>
+                              <ShoppingCart className="h-5 w-5 me-2" />
+                              {getLocalizedText("احجز الآن", "Book Now", "Réserver")}
+                            </Button>
+                          </Link>
+                          <a 
+                            href="https://wa.me/96597960808" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex-1"
+                          >
+                            <Button variant="outline" className="w-full border-[#25D366] text-[#25D366] hover:bg-[#25D366]/10" data-testid={`offer-page-book-whatsapp-${offer.id}`}>
+                              <SiWhatsapp className="h-5 w-5 me-2" />
+                              {getLocalizedText("واتساب", "WhatsApp", "WhatsApp")}
+                            </Button>
+                          </a>
+                        </div>
                       </CardContent>
                     </Card>
                   </motion.div>

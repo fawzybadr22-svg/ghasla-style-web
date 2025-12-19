@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Car, Sparkles, Crown, Calendar, MapPin, Clock, Shield, Star, 
-  Users, Truck, Phone, X, Check, ChevronDown, MessageCircle, Search, Package, Tag
+  Users, Truck, Phone, X, Check, ChevronDown, MessageCircle, Search, Package, Tag, ShoppingCart
 } from "lucide-react";
 import type { Offer } from "@shared/schema";
 import { SiWhatsapp } from "react-icons/si";
@@ -591,14 +591,19 @@ export default function Home() {
                         <p className="text-muted-foreground text-sm mb-4">
                           {getLocalizedText(offer.descriptionAr, offer.descriptionEn, offer.descriptionFr)}
                         </p>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs text-muted-foreground">
-                            {getLocalizedText("ينتهي:", "Ends:", "Expire:")} {new Date(offer.endDate).toLocaleDateString(i18n.language === "ar" ? "ar-KW" : i18n.language === "fr" ? "fr-FR" : "en-US")}
-                          </span>
-                          <a href="https://wa.me/96597960808" target="_blank" rel="noopener noreferrer">
-                            <Button size="sm" className="bg-[#25D366] hover:bg-[#20BD5A]" data-testid={`offer-book-${offer.id}`}>
-                              <SiWhatsapp className="h-4 w-4 me-1" />
+                        <div className="text-xs text-muted-foreground mb-3">
+                          {getLocalizedText("ينتهي:", "Ends:", "Expire:")} {new Date(offer.endDate).toLocaleDateString(i18n.language === "ar" ? "ar-KW" : i18n.language === "fr" ? "fr-FR" : "en-US")}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Link href="/booking" className="flex-1">
+                            <Button size="sm" className="w-full" data-testid={`offer-book-regular-${offer.id}`}>
+                              <ShoppingCart className="h-4 w-4 me-1" />
                               {getLocalizedText("احجز الآن", "Book Now", "Réserver")}
+                            </Button>
+                          </Link>
+                          <a href="https://wa.me/96597960808" target="_blank" rel="noopener noreferrer">
+                            <Button size="sm" variant="outline" className="border-[#25D366] text-[#25D366]" data-testid={`offer-book-whatsapp-${offer.id}`}>
+                              <SiWhatsapp className="h-4 w-4" />
                             </Button>
                           </a>
                         </div>
