@@ -1076,6 +1076,76 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: Offers CRUD
+  app.get("/api/admin/offers", async (req, res) => {
+    try {
+      const offers = await storage.getOffers(false);
+      res.json(offers);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/admin/offers", async (req, res) => {
+    try {
+      const { titleAr, titleEn, titleFr, descriptionAr, descriptionEn, descriptionFr,
+        discountPercentage, discountAmountKD, imageUrl, startDate, endDate, isActive } = req.body;
+      
+      const offer = await storage.createOffer({
+        titleAr,
+        titleEn,
+        titleFr,
+        descriptionAr,
+        descriptionEn,
+        descriptionFr,
+        discountPercentage: discountPercentage || null,
+        discountAmountKD: discountAmountKD || null,
+        imageUrl: imageUrl || null,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        isActive: isActive ?? true,
+      });
+      res.status(201).json(offer);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/admin/offers/:id", async (req, res) => {
+    try {
+      const updateData: any = { ...req.body };
+      if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
+      if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
+      
+      const updated = await storage.updateOffer(req.params.id, updateData);
+      if (!updated) {
+        return res.status(404).json({ error: "Offer not found" });
+      }
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/admin/offers/:id", async (req, res) => {
+    try {
+      await storage.deleteOffer(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Public: Active offers
+  app.get("/api/offers/active", async (req, res) => {
+    try {
+      const offers = await storage.getActiveOffers();
+      res.json(offers);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Admin: Contact messages
   app.get("/api/admin/messages", async (req, res) => {
     try {

@@ -3,13 +3,14 @@ import { eq, desc, and, gte, lte, sql, count } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import {
   users, servicePackages, orders, loyaltyConfig, loyaltyTransactions,
-  referrals, blogPosts, testimonials, galleryItems, contactMessages, auditLogs, orderRatings,
+  referrals, blogPosts, testimonials, galleryItems, contactMessages, auditLogs, orderRatings, offers,
   type User, type InsertUser, type ServicePackage, type InsertServicePackage,
   type Order, type InsertOrder, type LoyaltyConfig, type InsertLoyaltyConfig,
   type LoyaltyTransaction, type InsertLoyaltyTransaction, type Referral, type InsertReferral,
   type BlogPost, type InsertBlogPost, type Testimonial, type InsertTestimonial,
   type GalleryItem, type InsertGalleryItem, type ContactMessage, type InsertContactMessage,
-  type AuditLog, type InsertAuditLog, type OrderRating, type InsertOrderRating
+  type AuditLog, type InsertAuditLog, type OrderRating, type InsertOrderRating,
+  type Offer, type InsertOffer
 } from "@shared/schema";
 
 function generateReferralCode(): string {
@@ -95,6 +96,14 @@ export interface IStorage {
   getOrderRating(orderId: string): Promise<OrderRating | undefined>;
   getOrderRatingsByDelegate(delegateId: string): Promise<OrderRating[]>;
   createOrderRating(rating: InsertOrderRating): Promise<OrderRating>;
+
+  // Offers
+  getOffer(id: string): Promise<Offer | undefined>;
+  getOffers(activeOnly?: boolean): Promise<Offer[]>;
+  getActiveOffers(): Promise<Offer[]>;
+  createOffer(offer: InsertOffer): Promise<Offer>;
+  updateOffer(id: string, data: Partial<Offer>): Promise<Offer | undefined>;
+  deleteOffer(id: string): Promise<boolean>;
 
   // Analytics
   getAnalytics(startDate: Date, endDate: Date): Promise<{
@@ -422,6 +431,46 @@ export class DatabaseStorage implements IStorage {
     const id = randomUUID();
     const [created] = await db.insert(orderRatings).values({ ...rating, id }).returning();
     return created;
+  }
+
+  // Offers
+  async getOffer(id: string): Promise<Offer | undefined> {
+    const [offer] = await db.select().from(offers).where(eq(offers.id, id));
+    return offer;
+  }
+
+  async getOffers(activeOnly?: boolean): Promise<Offer[]> {
+    if (activeOnly) {
+      return db.select().from(offers).where(eq(offers.isActive, true)).orderBy(desc(offers.createdAt));
+    }
+    return db.select().from(offers).orderBy(desc(offers.createdAt));
+  }
+
+  async getActiveOffers(): Promise<Offer[]> {
+    const now = new Date();
+    return db.select().from(offers).where(
+      and(
+        eq(offers.isActive, true),
+        lte(offers.startDate, now),
+        gte(offers.endDate, now)
+      )
+    ).orderBy(desc(offers.createdAt));
+  }
+
+  async createOffer(offer: InsertOffer): Promise<Offer> {
+    const id = randomUUID();
+    const [created] = await db.insert(offers).values({ ...offer, id }).returning();
+    return created;
+  }
+
+  async updateOffer(id: string, data: Partial<Offer>): Promise<Offer | undefined> {
+    const [updated] = await db.update(offers).set(data).where(eq(offers.id, id)).returning();
+    return updated;
+  }
+
+  async deleteOffer(id: string): Promise<boolean> {
+    await db.delete(offers).where(eq(offers.id, id));
+    return true;
   }
 
   // Analytics
