@@ -11,6 +11,8 @@ export const paymentMethodEnum = pgEnum("payment_method", ["cash", "online"]);
 export const serviceCategoryEnum = pgEnum("service_category", ["exterior", "interior", "full", "vip", "monthly"]);
 export const loyaltyTransactionTypeEnum = pgEnum("loyalty_transaction_type", ["earn", "redeem", "referral_bonus", "welcome_bonus", "admin_adjustment"]);
 export const referralStatusEnum = pgEnum("referral_status", ["pending", "completed", "invalid"]);
+export const offerTargetAudienceEnum = pgEnum("offer_target_audience", ["all", "new_customers", "existing_customers"]);
+export const offerLoyaltyScopeEnum = pgEnum("offer_loyalty_scope", ["inside_loyalty", "outside_loyalty"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -228,6 +230,8 @@ export const offers = pgTable("offers", {
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
   isActive: boolean("is_active").notNull().default(true),
+  targetAudience: offerTargetAudienceEnum("target_audience").notNull().default("all"),
+  loyaltyScope: offerLoyaltyScopeEnum("loyalty_scope").notNull().default("outside_loyalty"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

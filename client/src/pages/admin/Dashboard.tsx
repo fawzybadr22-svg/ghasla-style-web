@@ -1963,6 +1963,8 @@ function OffersManager({
     startDate: "",
     endDate: "",
     isActive: true,
+    targetAudience: "all" as "all" | "new_customers" | "existing_customers",
+    loyaltyScope: "outside_loyalty" as "inside_loyalty" | "outside_loyalty",
   });
 
   const resetForm = () => {
@@ -1979,6 +1981,8 @@ function OffersManager({
       startDate: "",
       endDate: "",
       isActive: true,
+      targetAudience: "all",
+      loyaltyScope: "outside_loyalty",
     });
     setEditing(null);
     setShowForm(false);
@@ -2154,6 +2158,33 @@ function OffersManager({
                 </Label>
               </div>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>{getLocalizedText("الجمهور المستهدف", "Target Audience", "Public cible")}</Label>
+                <Select value={form.targetAudience} onValueChange={(v: "all" | "new_customers" | "existing_customers") => setForm({ ...form, targetAudience: v })}>
+                  <SelectTrigger data-testid="select-offer-audience">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{getLocalizedText("الجميع", "All Customers", "Tous les clients")}</SelectItem>
+                    <SelectItem value="new_customers">{getLocalizedText("العملاء الجدد", "New Customers", "Nouveaux clients")}</SelectItem>
+                    <SelectItem value="existing_customers">{getLocalizedText("العملاء الحاليين", "Existing Customers", "Clients existants")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>{getLocalizedText("نظام الولاء", "Loyalty System", "Système de fidélité")}</Label>
+                <Select value={form.loyaltyScope} onValueChange={(v: "inside_loyalty" | "outside_loyalty") => setForm({ ...form, loyaltyScope: v })}>
+                  <SelectTrigger data-testid="select-offer-loyalty">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="outside_loyalty">{getLocalizedText("خارج نظام الولاء", "Outside Loyalty", "Hors fidélité")}</SelectItem>
+                    <SelectItem value="inside_loyalty">{getLocalizedText("داخل نظام الولاء", "Inside Loyalty", "Dans fidélité")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="flex items-center gap-4 flex-wrap">
               <Button 
                 onClick={() => editing ? updateMutation.mutate({ id: editing.id, data: form }) : createMutation.mutate(form)} 
@@ -2194,7 +2225,7 @@ function OffersManager({
                       )}
                     </div>
                     <p className="text-muted-foreground text-sm mb-2">{getLocalizedText(offer.descriptionAr, offer.descriptionEn, offer.descriptionFr)}</p>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                       {offer.discountPercentage && (
                         <span className="text-primary font-medium">{offer.discountPercentage}% {getLocalizedText("خصم", "off", "de réduction")}</span>
                       )}
@@ -2204,6 +2235,16 @@ function OffersManager({
                       <span>
                         {formatDate(offer.startDate)} - {formatDate(offer.endDate)}
                       </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <Badge variant="outline" className="text-xs">
+                        {offer.targetAudience === "all" ? getLocalizedText("الجميع", "All", "Tous") : 
+                         offer.targetAudience === "new_customers" ? getLocalizedText("عملاء جدد", "New", "Nouveaux") : 
+                         getLocalizedText("عملاء حاليين", "Existing", "Existants")}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {offer.loyaltyScope === "inside_loyalty" ? getLocalizedText("داخل الولاء", "In Loyalty", "Fidélité") : getLocalizedText("خارج الولاء", "No Loyalty", "Sans fidélité")}
+                      </Badge>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -2243,6 +2284,8 @@ function OffersManager({
                           startDate: formatDate(offer.startDate),
                           endDate: formatDate(offer.endDate),
                           isActive: offer.isActive,
+                          targetAudience: offer.targetAudience || "all",
+                          loyaltyScope: offer.loyaltyScope || "outside_loyalty",
                         });
                         setShowForm(true);
                       }}

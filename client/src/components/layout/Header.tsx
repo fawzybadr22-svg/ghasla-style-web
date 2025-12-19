@@ -27,6 +27,7 @@ export function Header() {
     { href: "/", label: t("nav.home") },
     { href: "/about", label: t("nav.about") },
     { href: "/services", label: t("nav.services") },
+    { href: "/offers", label: t("nav.offers") },
     { href: "/loyalty", label: t("nav.loyalty") },
     { href: "/friends-club", label: t("nav.friendsClub") },
     { href: "/blog", label: t("nav.blog") },

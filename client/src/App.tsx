@@ -24,6 +24,7 @@ import AdminDashboard from "@/pages/admin/Dashboard";
 import DelegateDashboard from "@/pages/delegate/Dashboard";
 import TrackOrder from "@/pages/TrackOrder";
 import Blog from "@/pages/Blog";
+import Offers from "@/pages/Offers";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/about" component={About} />
       <Route path="/services" component={Services} />
+      <Route path="/offers" component={Offers} />
       <Route path="/booking" component={Booking} />
       <Route path="/loyalty" component={Loyalty} />
       <Route path="/friends-club" component={FriendsClub} />
