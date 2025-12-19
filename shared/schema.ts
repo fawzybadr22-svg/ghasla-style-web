@@ -213,6 +213,28 @@ export const insertGalleryItemSchema = createInsertSchema(galleryItems).omit({ i
 export type InsertGalleryItem = z.infer<typeof insertGalleryItemSchema>;
 export type GalleryItem = typeof galleryItems.$inferSelect;
 
+// Offers/Promotions table
+export const offers = pgTable("offers", {
+  id: text("id").primaryKey(),
+  titleAr: text("title_ar").notNull(),
+  titleEn: text("title_en").notNull(),
+  titleFr: text("title_fr").notNull(),
+  descriptionAr: text("description_ar").notNull(),
+  descriptionEn: text("description_en").notNull(),
+  descriptionFr: text("description_fr").notNull(),
+  discountPercentage: real("discount_percentage"),
+  discountAmountKD: real("discount_amount_kd"),
+  imageUrl: text("image_url"),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertOfferSchema = createInsertSchema(offers).omit({ id: true, createdAt: true });
+export type InsertOffer = z.infer<typeof insertOfferSchema>;
+export type Offer = typeof offers.$inferSelect;
+
 // Contact Messages table
 export const contactMessages = pgTable("contact_messages", {
   id: text("id").primaryKey(),
