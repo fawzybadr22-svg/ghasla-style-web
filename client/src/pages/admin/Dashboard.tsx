@@ -29,6 +29,23 @@ export default function AdminDashboard() {
   
   const section = params?.section || "dashboard";
 
+  // Package editing state
+  const [editingPackage, setEditingPackage] = useState<ServicePackage | null>(null);
+  const [isAddingPackage, setIsAddingPackage] = useState(false);
+  const [packageForm, setPackageForm] = useState({
+    nameAr: "",
+    nameEn: "",
+    nameFr: "",
+    descriptionAr: "",
+    descriptionEn: "",
+    descriptionFr: "",
+    priceSedanKD: 0,
+    priceSuvKD: 0,
+    estimatedMinutes: 30,
+    category: "exterior" as string,
+    isActive: true,
+  });
+
   const getLocalizedText = (ar: string, en: string, fr: string) => {
     return i18n.language === "ar" ? ar : i18n.language === "fr" ? fr : en;
   };
@@ -142,6 +159,114 @@ export default function AdminDashboard() {
       toast({ title: getLocalizedText("تم حفظ الإعدادات", "Settings Saved", "Paramètres Enregistrés") });
     },
   });
+
+  const createPackageMutation = useMutation({
+    mutationFn: async (data: typeof packageForm) => {
+      const res = await fetch("/api/admin/packages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, performedBy: user?.id }),
+      });
+      if (!res.ok) throw new Error("Failed to create package");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/packages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
+      setIsAddingPackage(false);
+      resetPackageForm();
+      toast({ title: getLocalizedText("تمت الإضافة بنجاح", "Package Added", "Forfait Ajouté") });
+    },
+    onError: () => {
+      toast({ title: getLocalizedText("فشل في الإضافة", "Failed to add", "Échec de l'ajout"), variant: "destructive" });
+    },
+  });
+
+  const updatePackageMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: typeof packageForm }) => {
+      const res = await fetch(`/api/admin/packages/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, performedBy: user?.id }),
+      });
+      if (!res.ok) throw new Error("Failed to update package");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/packages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
+      setEditingPackage(null);
+      resetPackageForm();
+      toast({ title: getLocalizedText("تم التحديث بنجاح", "Package Updated", "Forfait Mis à Jour") });
+    },
+    onError: () => {
+      toast({ title: getLocalizedText("فشل في التحديث", "Failed to update", "Échec de la mise à jour"), variant: "destructive" });
+    },
+  });
+
+  const deletePackageMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/admin/packages/${id}?performedBy=${user?.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete package");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/packages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/packages"] });
+      toast({ title: getLocalizedText("تم الحذف", "Package Deleted", "Forfait Supprimé") });
+    },
+    onError: () => {
+      toast({ title: getLocalizedText("فشل في الحذف", "Failed to delete", "Échec de la suppression"), variant: "destructive" });
+    },
+  });
+
+  const resetPackageForm = () => {
+    setPackageForm({
+      nameAr: "",
+      nameEn: "",
+      nameFr: "",
+      descriptionAr: "",
+      descriptionEn: "",
+      descriptionFr: "",
+      priceSedanKD: 0,
+      priceSuvKD: 0,
+      estimatedMinutes: 30,
+      category: "exterior",
+      isActive: true,
+    });
+  };
+
+  const openEditPackage = (pkg: ServicePackage) => {
+    setPackageForm({
+      nameAr: pkg.nameAr,
+      nameEn: pkg.nameEn,
+      nameFr: pkg.nameFr,
+      descriptionAr: pkg.descriptionAr || "",
+      descriptionEn: pkg.descriptionEn || "",
+      descriptionFr: pkg.descriptionFr || "",
+      priceSedanKD: pkg.priceSedanKD,
+      priceSuvKD: pkg.priceSuvKD,
+      estimatedMinutes: pkg.estimatedMinutes,
+      category: pkg.category,
+      isActive: pkg.isActive,
+    });
+    setEditingPackage(pkg);
+  };
+
+  const openAddPackage = () => {
+    resetPackageForm();
+    setIsAddingPackage(true);
+  };
+
+  const handlePackageSubmit = () => {
+    if (editingPackage) {
+      updatePackageMutation.mutate({ id: editingPackage.id, data: packageForm });
+    } else {
+      createPackageMutation.mutate(packageForm);
+    }
+  };
 
   if (loading) {
     return (
@@ -298,7 +423,7 @@ export default function AdminDashboard() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <h1 className="text-2xl font-bold">{t("admin.packages")}</h1>
-                  <Button data-testid="add-package">
+                  <Button onClick={openAddPackage} data-testid="add-package">
                     <Plus className="h-4 w-4 me-2" />
                     {getLocalizedText("إضافة باقة", "Add Package", "Ajouter un Forfait")}
                   </Button>
@@ -323,8 +448,11 @@ export default function AdminDashboard() {
                               <Badge variant={pkg.isActive ? "default" : "secondary"}>
                                 {pkg.isActive ? getLocalizedText("نشط", "Active", "Actif") : getLocalizedText("غير نشط", "Inactive", "Inactif")}
                               </Badge>
-                              <Button size="icon" variant="ghost">
+                              <Button size="icon" variant="ghost" onClick={() => openEditPackage(pkg)} data-testid={`edit-package-${pkg.id}`}>
                                 <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" onClick={() => deletePackageMutation.mutate(pkg.id)} data-testid={`delete-package-${pkg.id}`}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </div>
                           </div>
@@ -335,6 +463,173 @@ export default function AdminDashboard() {
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Package Edit/Add Dialog */}
+                <Dialog open={!!editingPackage || isAddingPackage} onOpenChange={(open) => {
+                  if (!open) {
+                    setEditingPackage(null);
+                    setIsAddingPackage(false);
+                    resetPackageForm();
+                  }
+                }}>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingPackage 
+                          ? getLocalizedText("تعديل الباقة", "Edit Package", "Modifier le Forfait")
+                          : getLocalizedText("إضافة باقة جديدة", "Add New Package", "Ajouter un Nouveau Forfait")
+                        }
+                      </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label>{getLocalizedText("الاسم (عربي)", "Name (Arabic)", "Nom (Arabe)")}</Label>
+                          <Input
+                            value={packageForm.nameAr}
+                            onChange={(e) => setPackageForm({ ...packageForm, nameAr: e.target.value })}
+                            placeholder="غسيل خارجي"
+                            dir="rtl"
+                            data-testid="input-package-name-ar"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{getLocalizedText("الاسم (إنجليزي)", "Name (English)", "Nom (Anglais)")}</Label>
+                          <Input
+                            value={packageForm.nameEn}
+                            onChange={(e) => setPackageForm({ ...packageForm, nameEn: e.target.value })}
+                            placeholder="Exterior Wash"
+                            data-testid="input-package-name-en"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{getLocalizedText("الاسم (فرنسي)", "Name (French)", "Nom (Français)")}</Label>
+                          <Input
+                            value={packageForm.nameFr}
+                            onChange={(e) => setPackageForm({ ...packageForm, nameFr: e.target.value })}
+                            placeholder="Lavage Extérieur"
+                            data-testid="input-package-name-fr"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label>{getLocalizedText("الوصف (عربي)", "Description (Arabic)", "Description (Arabe)")}</Label>
+                          <Input
+                            value={packageForm.descriptionAr}
+                            onChange={(e) => setPackageForm({ ...packageForm, descriptionAr: e.target.value })}
+                            dir="rtl"
+                            data-testid="input-package-desc-ar"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{getLocalizedText("الوصف (إنجليزي)", "Description (English)", "Description (Anglais)")}</Label>
+                          <Input
+                            value={packageForm.descriptionEn}
+                            onChange={(e) => setPackageForm({ ...packageForm, descriptionEn: e.target.value })}
+                            data-testid="input-package-desc-en"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{getLocalizedText("الوصف (فرنسي)", "Description (French)", "Description (Français)")}</Label>
+                          <Input
+                            value={packageForm.descriptionFr}
+                            onChange={(e) => setPackageForm({ ...packageForm, descriptionFr: e.target.value })}
+                            data-testid="input-package-desc-fr"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="space-y-2">
+                          <Label>{getLocalizedText("سعر سيدان (د.ك)", "Sedan Price (KD)", "Prix Berline (KD)")}</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            value={packageForm.priceSedanKD}
+                            onChange={(e) => setPackageForm({ ...packageForm, priceSedanKD: parseFloat(e.target.value) || 0 })}
+                            data-testid="input-package-price-sedan"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{getLocalizedText("سعر SUV (د.ك)", "SUV Price (KD)", "Prix SUV (KD)")}</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            value={packageForm.priceSuvKD}
+                            onChange={(e) => setPackageForm({ ...packageForm, priceSuvKD: parseFloat(e.target.value) || 0 })}
+                            data-testid="input-package-price-suv"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{getLocalizedText("المدة (دقائق)", "Duration (min)", "Durée (min)")}</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={packageForm.estimatedMinutes}
+                            onChange={(e) => setPackageForm({ ...packageForm, estimatedMinutes: parseInt(e.target.value) || 30 })}
+                            data-testid="input-package-duration"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>{getLocalizedText("الفئة", "Category", "Catégorie")}</Label>
+                          <Select value={packageForm.category} onValueChange={(val) => setPackageForm({ ...packageForm, category: val })}>
+                            <SelectTrigger data-testid="select-package-category">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="exterior">{getLocalizedText("خارجي", "Exterior", "Extérieur")}</SelectItem>
+                              <SelectItem value="interior">{getLocalizedText("داخلي", "Interior", "Intérieur")}</SelectItem>
+                              <SelectItem value="full">{getLocalizedText("كامل", "Full", "Complet")}</SelectItem>
+                              <SelectItem value="vip">{getLocalizedText("VIP", "VIP", "VIP")}</SelectItem>
+                              <SelectItem value="monthly">{getLocalizedText("شهري", "Monthly", "Mensuel")}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Label>{getLocalizedText("نشط", "Active", "Actif")}</Label>
+                        <input
+                          type="checkbox"
+                          checked={packageForm.isActive}
+                          onChange={(e) => setPackageForm({ ...packageForm, isActive: e.target.checked })}
+                          className="h-4 w-4"
+                          data-testid="checkbox-package-active"
+                        />
+                      </div>
+
+                      <div className="flex gap-2 pt-4">
+                        <Button 
+                          onClick={handlePackageSubmit} 
+                          disabled={createPackageMutation.isPending || updatePackageMutation.isPending}
+                          data-testid="button-save-package"
+                        >
+                          <Save className="h-4 w-4 me-2" />
+                          {(createPackageMutation.isPending || updatePackageMutation.isPending)
+                            ? getLocalizedText("جاري الحفظ...", "Saving...", "Enregistrement...")
+                            : getLocalizedText("حفظ", "Save", "Enregistrer")
+                          }
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setEditingPackage(null);
+                            setIsAddingPackage(false);
+                            resetPackageForm();
+                          }}
+                          data-testid="button-cancel-package"
+                        >
+                          <X className="h-4 w-4 me-2" />
+                          {getLocalizedText("إلغاء", "Cancel", "Annuler")}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             )}
 
