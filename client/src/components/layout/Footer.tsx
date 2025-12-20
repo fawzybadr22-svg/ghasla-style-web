@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Phone, Mail, MapPin } from "lucide-react";
-import { SiWhatsapp, SiInstagram, SiX } from "react-icons/si";
+import { SiWhatsapp, SiInstagram, SiTiktok, SiSnapchat, SiFacebook } from "react-icons/si";
 
 export function Footer() {
   const { t, i18n } = useTranslation();
@@ -37,7 +37,7 @@ export function Footer() {
             <p className="text-muted-foreground text-sm">
               {t("footer.description")}
             </p>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <a
                 href="https://wa.me/96597960808"
                 target="_blank"
@@ -48,18 +48,40 @@ export function Footer() {
                 <SiWhatsapp className="h-5 w-5" />
               </a>
               <a
-                href="#"
+                href="https://www.instagram.com/ghaslahstyle"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 text-white transition-transform hover:scale-105"
                 data-testid="social-instagram"
               >
                 <SiInstagram className="h-5 w-5" />
               </a>
               <a
-                href="#"
+                href="https://www.tiktok.com/@ghaslah.style"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-background transition-transform hover:scale-105"
-                data-testid="social-twitter"
+                data-testid="social-tiktok"
               >
-                <SiX className="h-5 w-5" />
+                <SiTiktok className="h-5 w-5" />
+              </a>
+              <a
+                href="https://www.snapchat.com/add/ghaslahstyle"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FFFC00] text-black transition-transform hover:scale-105"
+                data-testid="social-snapchat"
+              >
+                <SiSnapchat className="h-5 w-5" />
+              </a>
+              <a
+                href="https://www.facebook.com/share/1A6PvNuWVJ/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1877F2] text-white transition-transform hover:scale-105"
+                data-testid="social-facebook"
+              >
+                <SiFacebook className="h-5 w-5" />
               </a>
             </div>
           </div>
