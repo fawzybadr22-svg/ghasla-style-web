@@ -15,7 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 import type { ServicePackage, ServiceArea } from "@shared/schema";
 
 const defaultPackages: ServicePackage[] = [
-  { id: "1", nameAr: "غسيل خارجي", nameEn: "Exterior Wash", nameFr: "Lavage Extérieur", descriptionAr: "", descriptionEn: "", descriptionFr: "", priceSedanKD: 3, priceSuvKD: 4, estimatedMinutes: 30, category: "exterior", isActive: true, createdAt: new Date() },
+  { id: "1", nameAr: "غسيل خارجي", nameEn: "Exterior Wash", nameFr: "Lavage Extérieur", descriptionAr: "", descriptionEn: "", descriptionFr: "", priceSedanKD: 3.5, priceSuvKD: 4.5, estimatedMinutes: 30, category: "exterior", isActive: true, createdAt: new Date() },
   { id: "2", nameAr: "تنظيف داخلي", nameEn: "Interior Clean", nameFr: "Nettoyage Intérieur", descriptionAr: "", descriptionEn: "", descriptionFr: "", priceSedanKD: 5, priceSuvKD: 7, estimatedMinutes: 45, category: "interior", isActive: true, createdAt: new Date() },
   { id: "3", nameAr: "غسيل كامل", nameEn: "Full Wash", nameFr: "Lavage Complet", descriptionAr: "", descriptionEn: "", descriptionFr: "", priceSedanKD: 7, priceSuvKD: 10, estimatedMinutes: 60, category: "full", isActive: true, createdAt: new Date() },
   { id: "4", nameAr: "VIP / تفصيلي", nameEn: "VIP / Detailing", nameFr: "VIP / Détaillage", descriptionAr: "", descriptionEn: "", descriptionFr: "", priceSedanKD: 15, priceSuvKD: 20, estimatedMinutes: 120, category: "vip", isActive: true, createdAt: new Date() },
@@ -249,9 +249,16 @@ export default function Booking() {
         setStep(1);
         setLocation("/account");
       } else {
+        // Use localized error message if available
+        const errorMessage = data.errorAr && i18n.language === "ar" 
+          ? data.errorAr 
+          : data.errorFr && i18n.language === "fr"
+            ? data.errorFr
+            : data.error || getLocalizedText("فشل إنشاء الحجز", "Failed to create booking", "Échec de la création de la réservation");
+        
         toast({
           title: t("common.error"),
-          description: data.error || getLocalizedText("فشل إنشاء الحجز", "Failed to create booking", "Échec de la création de la réservation"),
+          description: errorMessage,
           variant: "destructive",
         });
       }

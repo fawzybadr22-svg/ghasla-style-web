@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, and, gte, lte, sql, count } from "drizzle-orm";
+import { eq, desc, and, gte, lte, lt, sql, count } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import {
   users, servicePackages, orders, loyaltyConfig, loyaltyTransactions,
@@ -91,6 +91,7 @@ export interface IStorage {
   // Audit Logs
   getAuditLogs(filters?: { performedBy?: string; targetCollection?: string }): Promise<AuditLog[]>;
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  clearAuditLogs(olderThanDays?: number): Promise<number>;
 
   // Order Ratings
   getOrderRating(orderId: string): Promise<OrderRating | undefined>;
@@ -415,6 +416,17 @@ export class DatabaseStorage implements IStorage {
     const id = randomUUID();
     const [created] = await db.insert(auditLogs).values({ ...log, id }).returning();
     return created;
+  }
+
+  async clearAuditLogs(olderThanDays?: number): Promise<number> {
+    if (olderThanDays && olderThanDays > 0) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+      const result = await db.delete(auditLogs).where(lt(auditLogs.performedAt, cutoffDate)).returning();
+      return result.length;
+    }
+    const result = await db.delete(auditLogs).returning();
+    return result.length;
   }
 
   // Order Ratings

@@ -876,7 +876,67 @@ export default function AdminDashboard() {
 
             {section === "audit" && isSuperAdmin && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold">{t("admin.auditLogs")}</h1>
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <h1 className="text-2xl font-bold">{t("admin.auditLogs")}</h1>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        if (confirm(getLocalizedText(
+                          "هل تريد حذف السجلات الأقدم من 30 يوم؟",
+                          "Delete logs older than 30 days?",
+                          "Supprimer les logs de plus de 30 jours?"
+                        ))) {
+                          try {
+                            const res = await fetch("/api/admin/audit-logs?olderThanDays=30", {
+                              method: "DELETE",
+                              headers: { "Authorization": `Bearer ${await firebaseUser?.getIdToken()}` },
+                            });
+                            const data = await res.json();
+                            if (res.ok) {
+                              toast({ title: getLocalizedText(`تم حذف ${data.deletedCount} سجل`, `Deleted ${data.deletedCount} logs`, `${data.deletedCount} logs supprimés`) });
+                              queryClient.invalidateQueries({ queryKey: ["/api/admin/audit-logs"] });
+                            }
+                          } catch (e) {
+                            toast({ title: getLocalizedText("خطأ", "Error", "Erreur"), variant: "destructive" });
+                          }
+                        }
+                      }}
+                      data-testid="clear-old-logs-btn"
+                    >
+                      <Trash2 className="h-4 w-4 me-2" />
+                      {getLocalizedText("حذف +30 يوم", "Clear 30+ days", "Suppr. +30 jours")}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={async () => {
+                        if (confirm(getLocalizedText(
+                          "هل أنت متأكد؟ سيتم حذف جميع سجلات العمليات!",
+                          "Are you sure? This will delete ALL audit logs!",
+                          "Êtes-vous sûr? Cela supprimera TOUS les logs!"
+                        ))) {
+                          try {
+                            const res = await fetch("/api/admin/audit-logs?clearAll=true", {
+                              method: "DELETE",
+                              headers: { "Authorization": `Bearer ${await firebaseUser?.getIdToken()}` },
+                            });
+                            const data = await res.json();
+                            if (res.ok) {
+                              toast({ title: getLocalizedText(`تم حذف ${data.deletedCount} سجل`, `Deleted ${data.deletedCount} logs`, `${data.deletedCount} logs supprimés`) });
+                              queryClient.invalidateQueries({ queryKey: ["/api/admin/audit-logs"] });
+                            }
+                          } catch (e) {
+                            toast({ title: getLocalizedText("خطأ", "Error", "Erreur"), variant: "destructive" });
+                          }
+                        }
+                      }}
+                      data-testid="clear-all-logs-btn"
+                    >
+                      <Trash2 className="h-4 w-4 me-2" />
+                      {getLocalizedText("حذف الكل", "Clear All", "Supprimer tout")}
+                    </Button>
+                  </div>
+                </div>
                 <Card>
                   <CardContent className="pt-6">
                     {auditLogsLoading ? (

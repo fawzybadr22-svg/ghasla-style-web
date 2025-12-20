@@ -12,9 +12,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
-import { useFirestoreOrders, type OrderFilter } from "@/hooks/use-firestore-orders";
-import type { FirestoreOrderWithId } from "@/types/firestore-order";
-import { ORDER_STATUS_CONFIG } from "@/types/firestore-order";
+import { usePostgresOrders, type OrderFilter } from "@/hooks/use-postgres-orders";
+import type { Order } from "@shared/schema";
+
+const ORDER_STATUS_CONFIG: Record<string, { labelAr: string; labelEn: string; labelFr: string; step: number }> = {
+  pending: { labelAr: "معلق", labelEn: "Pending", labelFr: "En attente", step: 1 },
+  confirmed: { labelAr: "مؤكد", labelEn: "Confirmed", labelFr: "Confirmé", step: 2 },
+  assigned: { labelAr: "مخصص", labelEn: "Assigned", labelFr: "Assigné", step: 2 },
+  on_the_way: { labelAr: "في الطريق", labelEn: "On the way", labelFr: "En route", step: 3 },
+  in_progress: { labelAr: "قيد التنفيذ", labelEn: "In progress", labelFr: "En cours", step: 4 },
+  completed: { labelAr: "مكتمل", labelEn: "Completed", labelFr: "Terminé", step: 5 },
+  cancelled: { labelAr: "ملغي", labelEn: "Cancelled", labelFr: "Annulé", step: 0 }
+};
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
@@ -30,7 +39,7 @@ export default function TrackOrder() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const [selectedOrder, setSelectedOrder] = useState<FirestoreOrderWithId | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   const { 
     filteredOrders, 
@@ -40,7 +49,7 @@ export default function TrackOrder() {
     filter, 
     setFilter, 
     refetch 
-  } = useFirestoreOrders();
+  } = usePostgresOrders();
 
   const getLocalizedText = (ar: string, en: string, fr: string) => {
     return i18n.language === "ar" ? ar : i18n.language === "fr" ? fr : en;
@@ -69,9 +78,9 @@ export default function TrackOrder() {
     return config?.step || 0;
   };
 
-  const formatDate = (timestamp: any) => {
-    if (!timestamp) return "";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const formatDate = (dateValue: any) => {
+    if (!dateValue) return "";
+    const date = new Date(dateValue);
     return date.toLocaleDateString(i18n.language === "ar" ? "ar-KW" : i18n.language === "fr" ? "fr-FR" : "en-US", {
       year: "numeric",
       month: "short",
@@ -79,16 +88,16 @@ export default function TrackOrder() {
     });
   };
 
-  const formatTime = (timestamp: any) => {
-    if (!timestamp) return "";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const formatTime = (dateValue: any) => {
+    if (!dateValue) return "";
+    const date = new Date(dateValue);
     return date.toLocaleTimeString(i18n.language === "ar" ? "ar-KW" : i18n.language === "fr" ? "fr-FR" : "en-US", {
       hour: "2-digit",
       minute: "2-digit",
     });
   };
 
-  const isLastCompleted = (order: FirestoreOrderWithId) => {
+  const isLastCompleted = (order: Order) => {
     return lastCompletedOrder?.id === order.id;
   };
 
@@ -224,14 +233,14 @@ export default function TrackOrder() {
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <div>
                             <p className="font-medium text-sm">
-                              {order.serviceType || "Service"}
+                              {order.area || getLocalizedText("خدمة غسيل", "Car Wash Service", "Service de lavage")}
                             </p>
                             <p className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                              <span className="font-mono">{order.orderCode}</span>
-                              {order.vehicleInfo?.plateLast && (
+                              <span className="font-mono">#{order.id.slice(0, 8)}</span>
+                              {order.carType && (
                                 <span className="flex items-center gap-1">
-                                  <FileText className="h-3 w-3" />
-                                  {order.vehicleInfo.plateLast}
+                                  <Car className="h-3 w-3" />
+                                  {order.carType === "suv" ? "SUV" : getLocalizedText("سيدان", "Sedan", "Berline")}
                                 </span>
                               )}
                             </p>
@@ -242,13 +251,10 @@ export default function TrackOrder() {
                         </div>
                         
                         {/* Vehicle Info */}
-                        {order.vehicleInfo && (
+                        {order.carDetails && (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
                             <Car className="h-3 w-3" />
-                            <span>
-                              {order.vehicleInfo.make} {order.vehicleInfo.model}
-                              {order.vehicleInfo.color && ` - ${order.vehicleInfo.color}`}
-                            </span>
+                            <span>{order.carDetails}</span>
                           </div>
                         )}
                         
@@ -264,7 +270,7 @@ export default function TrackOrder() {
                         </div>
                         <div className="flex items-center justify-between mt-2">
                           <span className="text-sm font-semibold text-primary">
-                            {order.totalPrice} {getLocalizedText("د.ك", "KD", "KD")}
+                            {order.priceKD} {getLocalizedText("د.ك", "KD", "KD")}
                           </span>
                           <ChevronRight className="h-4 w-4 text-muted-foreground" />
                         </div>
@@ -299,10 +305,10 @@ export default function TrackOrder() {
                           )}
                           <CardTitle className="flex items-center gap-2">
                             <Package className="h-5 w-5 text-primary" />
-                            {selectedOrder.serviceType || "Service"}
+                            {selectedOrder.area || getLocalizedText("خدمة غسيل", "Car Wash Service", "Service de lavage")}
                           </CardTitle>
                           <p className="text-sm text-muted-foreground mt-1 font-mono">
-                            {getLocalizedText("كود الطلب:", "Order Code:", "Code de commande:")} {selectedOrder.orderCode}
+                            {getLocalizedText("كود الطلب:", "Order Code:", "Code de commande:")} #{selectedOrder.id.slice(0, 8)}
                           </p>
                         </div>
                         <Badge variant={getStatusVariant(selectedOrder.status)} className="text-sm">
@@ -367,9 +373,9 @@ export default function TrackOrder() {
                                         {getLocalizedText("الحالة الحالية", "Current status", "Statut actuel")}
                                       </p>
                                     )}
-                                    {selectedOrder.driverName && step.key === "assigned" && (
+                                    {selectedOrder.assignedDriver && step.key === "assigned" && (
                                       <p className="text-xs text-muted-foreground">
-                                        {selectedOrder.driverName}
+                                        {selectedOrder.assignedDriver}
                                       </p>
                                     )}
                                     {isCurrent && step.key === "on_the_way" && (
@@ -409,10 +415,10 @@ export default function TrackOrder() {
                             <span className="text-xs">{getLocalizedText("السيارة", "Vehicle", "Véhicule")}</span>
                           </div>
                           <p className="font-medium text-sm">
-                            {selectedOrder.vehicleInfo?.make} {selectedOrder.vehicleInfo?.model}
+                            {selectedOrder.carType === "suv" ? "SUV" : getLocalizedText("سيدان", "Sedan", "Berline")}
                           </p>
-                          {selectedOrder.vehicleInfo?.plateLast && (
-                            <p className="text-xs text-muted-foreground">{selectedOrder.vehicleInfo.plateLast}</p>
+                          {selectedOrder.carDetails && (
+                            <p className="text-xs text-muted-foreground">{selectedOrder.carDetails}</p>
                           )}
                         </div>
                         
@@ -422,10 +428,7 @@ export default function TrackOrder() {
                             <MapPin className="h-4 w-4" />
                             <span className="text-xs">{getLocalizedText("المنطقة", "Area", "Zone")}</span>
                           </div>
-                          <p className="font-medium text-sm">{selectedOrder.address?.area}</p>
-                          {selectedOrder.address?.block && (
-                            <p className="text-xs text-muted-foreground">Block {selectedOrder.address.block}</p>
-                          )}
+                          <p className="font-medium text-sm">{selectedOrder.area}</p>
                         </div>
                         
                         {/* Date */}
@@ -447,13 +450,13 @@ export default function TrackOrder() {
                         </div>
                       </div>
 
-                      {/* Notes */}
-                      {selectedOrder.address?.notes && (
+                      {/* Address */}
+                      {selectedOrder.address && (
                         <div className="bg-muted/30 rounded-lg p-3">
                           <p className="text-xs text-muted-foreground mb-1">
-                            {getLocalizedText("ملاحظات", "Notes", "Remarques")}
+                            {getLocalizedText("العنوان", "Address", "Adresse")}
                           </p>
-                          <p className="text-sm">{selectedOrder.address.notes}</p>
+                          <p className="text-sm">{selectedOrder.address}</p>
                         </div>
                       )}
 
@@ -464,22 +467,17 @@ export default function TrackOrder() {
                             {getLocalizedText("المبلغ الإجمالي", "Total Amount", "Montant total")}
                           </p>
                           <p className="text-2xl font-bold text-primary">
-                            {selectedOrder.totalPrice} {getLocalizedText("د.ك", "KD", "KD")}
+                            {selectedOrder.priceKD} {getLocalizedText("د.ك", "KD", "KD")}
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {selectedOrder.loyaltyPointsEarned > 0 && (
+                          {(selectedOrder.loyaltyPointsEarned ?? 0) > 0 && (
                             <Badge variant="secondary" className="text-sm">
                               <Star className="h-3 w-3 me-1" />
                               +{selectedOrder.loyaltyPointsEarned} {getLocalizedText("نقطة مكتسبة", "points earned", "points gagnés")}
                             </Badge>
                           )}
-                          {selectedOrder.discountApplied > 0 && (
-                            <Badge variant="secondary" className="text-sm">
-                              -{selectedOrder.discountApplied} {getLocalizedText("د.ك خصم", "KD discount", "KD réduction")}
-                            </Badge>
-                          )}
-                          {selectedOrder.loyaltyPointsRedeemed > 0 && (
+                          {(selectedOrder.loyaltyPointsRedeemed ?? 0) > 0 && (
                             <Badge variant="outline" className="text-sm">
                               {selectedOrder.loyaltyPointsRedeemed} {getLocalizedText("نقطة مستخدمة", "points used", "points utilisés")}
                             </Badge>

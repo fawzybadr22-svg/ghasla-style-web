@@ -541,7 +541,10 @@ export async function registerRoutes(
   // Public order tracking (returns limited info, no sensitive data)
   app.get("/api/orders/track/:orderId", async (req, res) => {
     try {
-      const order = await storage.getOrder(req.params.orderId);
+      // Clean the order ID: remove #, spaces, and trim
+      const cleanOrderId = req.params.orderId.replace(/^#/, "").replace(/\s+/g, "").trim();
+      
+      const order = await storage.getOrder(cleanOrderId);
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
       }
@@ -594,7 +597,11 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Customer not found" });
       }
       if (customer.status === "blocked") {
-        return res.status(403).json({ error: "Account is blocked" });
+        return res.status(403).json({ 
+          error: "Account is blocked",
+          errorAr: "حسابك محظور. يرجى التواصل مع الدعم",
+          errorFr: "Votre compte est bloqué. Veuillez contacter le support"
+        });
       }
 
       // Get service package to calculate proper price server-side
@@ -1235,6 +1242,52 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: Clear audit logs (superAdmin only)
+  app.delete("/api/admin/audit-logs", requireSuperAdmin, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { olderThanDays, clearAll } = req.query;
+      
+      // Validate input - require explicit clearAll=true for full deletion
+      if (olderThanDays) {
+        const days = parseInt(olderThanDays as string);
+        if (Number.isNaN(days) || days <= 0) {
+          return res.status(400).json({ error: "olderThanDays must be a positive number" });
+        }
+        
+        const deletedCount = await storage.clearAuditLogs(days);
+        
+        await storage.createAuditLog({
+          actionType: "clear_audit_logs",
+          performedBy: req.user?.uid || "system",
+          targetCollection: "auditLogs",
+          targetId: "bulk",
+          newValue: JSON.stringify({ deletedCount, olderThanDays: days }),
+        });
+        
+        return res.json({ success: true, deletedCount });
+      }
+      
+      // Require explicit clearAll=true for full deletion
+      if (clearAll === "true") {
+        const deletedCount = await storage.clearAuditLogs();
+        
+        await storage.createAuditLog({
+          actionType: "clear_audit_logs",
+          performedBy: req.user?.uid || "system",
+          targetCollection: "auditLogs",
+          targetId: "bulk",
+          newValue: JSON.stringify({ deletedCount, clearAll: true }),
+        });
+        
+        return res.json({ success: true, deletedCount });
+      }
+      
+      return res.status(400).json({ error: "Must specify olderThanDays or clearAll=true" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Admin: Analytics
   app.get("/api/admin/analytics", async (req, res) => {
     try {
@@ -1278,12 +1331,13 @@ export async function registerRoutes(
   // SUPER ADMIN ROUTES - Admin Management (Protected)
   // ====================
 
-  // Get all admins (superAdmin only)
+  // Get all admins and delegates (superAdmin only)
   app.get("/api/admin/admins", requireSuperAdmin, async (req: any, res) => {
     try {
+      const delegates = await storage.getUsers({ role: "delegate" });
       const admins = await storage.getUsers({ role: "admin" });
       const superAdmins = await storage.getUsers({ role: "super_admin" });
-      const allAdmins = [...superAdmins, ...admins].map(({ twoFactorSecret, ...u }) => u);
+      const allAdmins = [...superAdmins, ...admins, ...delegates].map(({ twoFactorSecret, ...u }) => u);
       res.json(allAdmins);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1305,7 +1359,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Email and name are required" });
       }
 
-      const validRoles = ["admin", "super_admin"];
+      const validRoles = ["delegate", "admin", "super_admin"];
       const adminRole = validRoles.includes(role) ? role : "admin";
 
       // Check if user exists in database
@@ -1333,9 +1387,10 @@ export async function registerRoutes(
         }
       }
 
-      // Set custom claims
+      // Set custom claims based on role
       await firebaseAdmin.auth().setCustomUserClaims(firebaseUser.uid, {
-        admin: true,
+        delegate: adminRole === "delegate",
+        admin: adminRole === "admin" || adminRole === "super_admin",
         superAdmin: adminRole === "super_admin",
       });
 
@@ -1388,7 +1443,7 @@ export async function registerRoutes(
       if (status && ["active", "blocked"].includes(status)) updateData.status = status;
       
       // Handle role change with transactional safety
-      if (role && ["admin", "super_admin", "customer"].includes(role)) {
+      if (role && ["delegate", "admin", "super_admin", "customer"].includes(role)) {
         // Prevent demoting last super admin
         if (user.role === "super_admin" && role !== "super_admin") {
           const superAdmins = await storage.getUsers({ role: "super_admin" });
@@ -1403,7 +1458,8 @@ export async function registerRoutes(
         const firebaseAdmin = getFirebaseAdmin();
         try {
           await firebaseAdmin.auth().setCustomUserClaims(req.params.id, {
-            admin: role !== "customer",
+            delegate: role === "delegate",
+            admin: role === "admin" || role === "super_admin",
             superAdmin: role === "super_admin",
           });
           
@@ -1428,7 +1484,8 @@ export async function registerRoutes(
         const { getFirebaseAdmin } = await import("./firebase-admin");
         const firebaseAdmin = getFirebaseAdmin();
         await firebaseAdmin.auth().setCustomUserClaims(req.params.id, {
-          admin: user.role !== "customer",
+          delegate: user.role === "delegate",
+          admin: user.role === "admin" || user.role === "super_admin",
           superAdmin: user.role === "super_admin",
         });
         return res.status(400).json({ error: "Operation would remove all super admins. Rolled back." });

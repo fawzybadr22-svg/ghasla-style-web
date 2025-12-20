@@ -7,7 +7,7 @@ import {
   Car, Sparkles, Crown, Calendar, MapPin, Clock, Shield, Star, 
   Users, Truck, Phone, X, Check, ChevronDown, MessageCircle, Search, Package, Tag, ShoppingCart
 } from "lucide-react";
-import type { Offer } from "@shared/schema";
+import type { Offer, ServicePackage } from "@shared/schema";
 import { SiWhatsapp } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -80,6 +80,11 @@ export default function Home() {
   // Fetch active offers
   const { data: activeOffers } = useQuery<Offer[]>({
     queryKey: ["/api/offers/active"],
+  });
+
+  // Fetch service packages for actual prices
+  const { data: servicePackages } = useQuery<ServicePackage[]>({
+    queryKey: ["/api/packages"],
   });
   
   // Order tracking state
@@ -158,12 +163,29 @@ export default function Home() {
     localStorage.setItem("ghasla_offer_seen", "true");
   };
 
+  // Get prices from API or use fallback
+  const getPackagePrice = (category: string, type: "sedan" | "suv"): number => {
+    const pkg = servicePackages?.find(p => p.category === category);
+    if (pkg) {
+      return type === "suv" ? pkg.priceSuvKD : pkg.priceSedanKD;
+    }
+    // Fallback prices if API not loaded yet
+    const fallbackPrices: Record<string, { sedan: number; suv: number }> = {
+      exterior: { sedan: 3.5, suv: 4.5 },
+      interior: { sedan: 5, suv: 7 },
+      full: { sedan: 7, suv: 10 },
+      vip: { sedan: 15, suv: 20 },
+      monthly: { sedan: 10, suv: 14 },
+    };
+    return fallbackPrices[category]?.[type] ?? 3;
+  };
+
   const services = [
-    { id: "exterior", nameAr: "غسيل خارجي", nameEn: "Exterior Wash", nameFr: "Lavage Extérieur", sedanPrice: 3, suvPrice: 4 },
-    { id: "interior", nameAr: "تنظيف داخلي", nameEn: "Interior Clean", nameFr: "Nettoyage Intérieur", sedanPrice: 5, suvPrice: 7 },
-    { id: "full", nameAr: "غسيل كامل", nameEn: "Full Wash", nameFr: "Lavage Complet", sedanPrice: 7, suvPrice: 10 },
-    { id: "vip", nameAr: "VIP / تفصيلي", nameEn: "VIP Detailing", nameFr: "Détaillage VIP", sedanPrice: 15, suvPrice: 20 },
-    { id: "monthly", nameAr: "اشتراك شهري", nameEn: "Monthly Package", nameFr: "Forfait Mensuel", sedanPrice: 10, suvPrice: 14 },
+    { id: "exterior", nameAr: "غسيل خارجي", nameEn: "Exterior Wash", nameFr: "Lavage Extérieur", sedanPrice: getPackagePrice("exterior", "sedan"), suvPrice: getPackagePrice("exterior", "suv") },
+    { id: "interior", nameAr: "تنظيف داخلي", nameEn: "Interior Clean", nameFr: "Nettoyage Intérieur", sedanPrice: getPackagePrice("interior", "sedan"), suvPrice: getPackagePrice("interior", "suv") },
+    { id: "full", nameAr: "غسيل كامل", nameEn: "Full Wash", nameFr: "Lavage Complet", sedanPrice: getPackagePrice("full", "sedan"), suvPrice: getPackagePrice("full", "suv") },
+    { id: "vip", nameAr: "VIP / تفصيلي", nameEn: "VIP Detailing", nameFr: "Détaillage VIP", sedanPrice: getPackagePrice("vip", "sedan"), suvPrice: getPackagePrice("vip", "suv") },
+    { id: "monthly", nameAr: "اشتراك شهري", nameEn: "Monthly Package", nameFr: "Forfait Mensuel", sedanPrice: getPackagePrice("monthly", "sedan"), suvPrice: getPackagePrice("monthly", "suv") },
   ];
 
   const selectedService = services.find(s => s.id === service) || services[2];
@@ -189,7 +211,7 @@ export default function Home() {
         { ar: "تنظيف الإطارات والجنوط", en: "Tire & rim clean", fr: "Pneus et jantes" },
         { ar: "تلميع الزجاج", en: "Glass polish", fr: "Polish vitres" },
       ],
-      price: 3,
+      price: getPackagePrice("exterior", "sedan"),
       bgImage: serviceExteriorBg,
     },
     {
@@ -205,7 +227,7 @@ export default function Home() {
         { ar: "تلميع لوحة القيادة", en: "Dashboard polish", fr: "Polish tableau" },
         { ar: "تعقيم وتعطير", en: "Sanitize & freshen", fr: "Désinfection" },
       ],
-      price: 5,
+      price: getPackagePrice("interior", "sedan"),
       bgImage: serviceInteriorBg,
     },
     {
@@ -221,7 +243,7 @@ export default function Home() {
         { ar: "تنظيف عميق للمقاعد", en: "Deep seat clean", fr: "Nettoyage sièges" },
         { ar: "تجديد البلاستيك والجلد", en: "Plastic & leather", fr: "Plastique & cuir" },
       ],
-      price: 15,
+      price: getPackagePrice("vip", "sedan"),
       bgImage: serviceVipBg,
     },
   ];
