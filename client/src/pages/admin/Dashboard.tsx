@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useRoute } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { 
   LayoutDashboard, Package, ShoppingBag, Users, Gift, FileText, 
   BarChart3, Shield, Settings, ChevronRight, TrendingUp, Pencil, Trash2,
-  Plus, Ban, CheckCircle, Download, Eye, X, Save, Camera, ImageIcon
+  Plus, Ban, CheckCircle, Download, Eye, X, Save, Camera, ImageIcon,
+  Upload, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1990,6 +1991,55 @@ function OffersManager({
     setShowForm(false);
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ 
+        title: getLocalizedText("نوع الملف غير مدعوم", "File type not supported", "Type de fichier non pris en charge"), 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ 
+        title: getLocalizedText("الملف كبير جداً (الحد الأقصى 5MB)", "File too large (max 5MB)", "Fichier trop volumineux (max 5MB)"), 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      
+      const res = await fetch("/api/admin/offers/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Upload failed");
+      
+      const data = await res.json();
+      setForm({ ...form, imageUrl: data.imageUrl });
+      toast({ title: getLocalizedText("تم رفع الصورة", "Image uploaded", "Image téléchargée") });
+    } catch (error) {
+      toast({ 
+        title: getLocalizedText("فشل رفع الصورة", "Upload failed", "Échec du téléchargement"), 
+        variant: "destructive" 
+      });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   const createMutation = useMutation({
     mutationFn: async (data: typeof form) => {
       const res = await fetch("/api/admin/offers", {
@@ -2134,8 +2184,39 @@ function OffersManager({
                 <Input type="number" value={form.discountAmountKD} onChange={(e) => setForm({ ...form, discountAmountKD: e.target.value })} placeholder="0.000" step="0.001" data-testid="input-offer-discount-amount" />
               </div>
               <div>
-                <Label>{getLocalizedText("رابط الصورة", "Image URL", "URL de l'image")}</Label>
-                <Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://..." data-testid="input-offer-image" />
+                <Label>{getLocalizedText("الصورة", "Image", "Image")}</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    value={form.imageUrl} 
+                    onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} 
+                    placeholder={getLocalizedText("رابط أو رفع صورة", "URL or upload image", "URL ou télécharger")} 
+                    data-testid="input-offer-image" 
+                    className="flex-1"
+                  />
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    data-testid="input-offer-image-file"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    data-testid="button-upload-offer-image"
+                  >
+                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {form.imageUrl && (
+                  <div className="mt-2 relative w-20 h-20">
+                    <img src={form.imageUrl} alt="Preview" className="w-full h-full object-cover rounded-md" />
+                  </div>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
