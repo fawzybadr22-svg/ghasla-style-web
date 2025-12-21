@@ -39,6 +39,13 @@ export default function AdminDashboard() {
   });
   // Filter mode: daily, weekly, monthly, all
   const [filterMode, setFilterMode] = useState<"daily" | "weekly" | "monthly" | "all">("daily");
+  
+  // Analytics filter state (separate from orders filter)
+  const [analyticsDate, setAnalyticsDate] = useState<string>(() => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  });
+  const [analyticsFilterMode, setAnalyticsFilterMode] = useState<"daily" | "weekly" | "monthly" | "all">("monthly");
 
   // Package editing state
   const [editingPackage, setEditingPackage] = useState<ServicePackage | null>(null);
@@ -83,7 +90,7 @@ export default function AdminDashboard() {
 
   const { data: allOrders, isLoading: ordersLoading } = useQuery<Order[]>({
     queryKey: ["/api/admin/orders"],
-    enabled: isAdmin && (section === "orders" || section === "dashboard"),
+    enabled: isAdmin && (section === "orders" || section === "dashboard" || section === "analytics"),
   });
 
   // Filter orders based on filter mode (client-side filtering for fast UX)
@@ -127,6 +134,62 @@ export default function AdminDashboard() {
   
   // Dashboard shows all recent orders, Orders page shows filtered by date
   const orders = section === "orders" ? filteredOrders : allOrders?.slice(0, 10);
+
+  // Analytics filtered orders (separate from orders page filter)
+  const analyticsFilteredOrders = useMemo(() => {
+    if (!allOrders) return [];
+    if (analyticsFilterMode === "all") return allOrders;
+    
+    const selectedDateObj = new Date(analyticsDate);
+    
+    if (analyticsFilterMode === "daily") {
+      return allOrders.filter(order => order.preferredDate === analyticsDate);
+    }
+    
+    if (analyticsFilterMode === "weekly") {
+      const startOfWeek = new Date(selectedDateObj);
+      startOfWeek.setDate(selectedDateObj.getDate() - selectedDateObj.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+      
+      return allOrders.filter(order => {
+        const orderDate = new Date(order.preferredDate);
+        return orderDate >= startOfWeek && orderDate <= endOfWeek;
+      });
+    }
+    
+    if (analyticsFilterMode === "monthly") {
+      const year = selectedDateObj.getFullYear();
+      const month = selectedDateObj.getMonth();
+      return allOrders.filter(order => {
+        const orderDate = new Date(order.preferredDate);
+        return orderDate.getFullYear() === year && orderDate.getMonth() === month;
+      });
+    }
+    
+    return allOrders;
+  }, [allOrders, analyticsFilterMode, analyticsDate]);
+
+  // Calculate analytics from filtered orders
+  const filteredAnalytics = useMemo(() => {
+    const completedOrders = analyticsFilteredOrders.filter(o => o.status === "completed");
+    const cancelledOrders = analyticsFilteredOrders.filter(o => o.status === "cancelled");
+    const totalIncome = completedOrders.reduce((sum, o) => sum + (o.priceKD || 0), 0);
+    const pendingOrders = analyticsFilteredOrders.filter(o => o.status === "pending");
+    const inProgressOrders = analyticsFilteredOrders.filter(o => ["assigned", "on_the_way", "in_progress"].includes(o.status));
+    
+    return {
+      totalOrders: analyticsFilteredOrders.length,
+      totalIncome,
+      completedOrders: completedOrders.length,
+      cancelledOrders: cancelledOrders.length,
+      pendingOrders: pendingOrders.length,
+      inProgressOrders: inProgressOrders.length,
+      averageOrderValue: completedOrders.length > 0 ? totalIncome / completedOrders.length : 0,
+    };
+  }, [analyticsFilteredOrders]);
 
   const { data: customers, isLoading: customersLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
@@ -1091,33 +1154,208 @@ export default function AdminDashboard() {
 
             {section === "analytics" && (
               <div className="space-y-6">
-                <h1 className="text-2xl font-bold">{t("admin.analytics")}</h1>
+                {/* Header with Filter Controls */}
+                <div className="flex flex-col gap-4">
+                  <h1 className="text-2xl font-bold">{t("admin.analytics")}</h1>
+                  
+                  {/* Filter Mode Tabs */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex bg-muted/50 rounded-lg p-1 gap-1">
+                      <Button 
+                        variant={analyticsFilterMode === "daily" ? "default" : "ghost"} 
+                        size="sm"
+                        onClick={() => setAnalyticsFilterMode("daily")}
+                        data-testid="button-analytics-filter-daily"
+                      >
+                        {getLocalizedText("يومي", "Daily", "Quotidien")}
+                      </Button>
+                      <Button 
+                        variant={analyticsFilterMode === "weekly" ? "default" : "ghost"} 
+                        size="sm"
+                        onClick={() => setAnalyticsFilterMode("weekly")}
+                        data-testid="button-analytics-filter-weekly"
+                      >
+                        {getLocalizedText("أسبوعي", "Weekly", "Hebdomadaire")}
+                      </Button>
+                      <Button 
+                        variant={analyticsFilterMode === "monthly" ? "default" : "ghost"} 
+                        size="sm"
+                        onClick={() => setAnalyticsFilterMode("monthly")}
+                        data-testid="button-analytics-filter-monthly"
+                      >
+                        {getLocalizedText("شهري", "Monthly", "Mensuel")}
+                      </Button>
+                      <Button 
+                        variant={analyticsFilterMode === "all" ? "default" : "ghost"} 
+                        size="sm"
+                        onClick={() => setAnalyticsFilterMode("all")}
+                        data-testid="button-analytics-filter-all"
+                      >
+                        {getLocalizedText("الكل", "All", "Tout")}
+                      </Button>
+                    </div>
+                    
+                    {/* Date Navigator - hidden when "all" is selected */}
+                    {analyticsFilterMode !== "all" && (
+                      <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => {
+                            const d = new Date(analyticsDate);
+                            if (analyticsFilterMode === "daily") d.setDate(d.getDate() - 1);
+                            else if (analyticsFilterMode === "weekly") d.setDate(d.getDate() - 7);
+                            else if (analyticsFilterMode === "monthly") d.setMonth(d.getMonth() - 1);
+                            setAnalyticsDate(d.toISOString().split("T")[0]);
+                          }}
+                          data-testid="button-analytics-prev-period"
+                        >
+                          {i18n.language === "ar" ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          {analyticsFilterMode === "monthly" ? (
+                            <Input
+                              type="month"
+                              value={analyticsDate.slice(0, 7)}
+                              onChange={(e) => setAnalyticsDate(e.target.value + "-01")}
+                              className="w-auto min-w-[140px]"
+                              data-testid="input-analytics-month-filter"
+                            />
+                          ) : (
+                            <Input
+                              type="date"
+                              value={analyticsDate}
+                              onChange={(e) => setAnalyticsDate(e.target.value)}
+                              className="w-auto min-w-[140px]"
+                              data-testid="input-analytics-date-filter"
+                            />
+                          )}
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => {
+                            const d = new Date(analyticsDate);
+                            if (analyticsFilterMode === "daily") d.setDate(d.getDate() + 1);
+                            else if (analyticsFilterMode === "weekly") d.setDate(d.getDate() + 7);
+                            else if (analyticsFilterMode === "monthly") d.setMonth(d.getMonth() + 1);
+                            setAnalyticsDate(d.toISOString().split("T")[0]);
+                          }}
+                          data-testid="button-analytics-next-period"
+                        >
+                          {i18n.language === "ar" ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setAnalyticsDate(new Date().toISOString().split("T")[0])}
+                          data-testid="button-analytics-today"
+                        >
+                          {getLocalizedText("اليوم", "Today", "Aujourd'hui")}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Period Label */}
+                <div className="text-lg font-medium text-muted-foreground">
+                  {analyticsFilterMode === "all" ? (
+                    getLocalizedText("جميع الفترات", "All Time", "Toutes les Périodes")
+                  ) : analyticsFilterMode === "monthly" ? (
+                    new Date(analyticsDate).toLocaleDateString(i18n.language === "ar" ? "ar-KW" : i18n.language === "fr" ? "fr-FR" : "en-US", { month: "long", year: "numeric" })
+                  ) : analyticsFilterMode === "weekly" ? (
+                    (() => {
+                      const d = new Date(analyticsDate);
+                      const startOfWeek = new Date(d);
+                      startOfWeek.setDate(d.getDate() - d.getDay());
+                      const endOfWeek = new Date(startOfWeek);
+                      endOfWeek.setDate(startOfWeek.getDate() + 6);
+                      return `${startOfWeek.toLocaleDateString(i18n.language === "ar" ? "ar-KW" : i18n.language === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric" })} - ${endOfWeek.toLocaleDateString(i18n.language === "ar" ? "ar-KW" : i18n.language === "fr" ? "fr-FR" : "en-US", { month: "short", day: "numeric" })}`;
+                    })()
+                  ) : (
+                    new Date(analyticsDate).toLocaleDateString(i18n.language === "ar" ? "ar-KW" : i18n.language === "fr" ? "fr-FR" : "en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+                  )}
+                </div>
+
+                {/* Main Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <Card>
                     <CardContent className="pt-6 text-center">
-                      <p className="text-3xl font-bold text-primary">{analytics?.totalIncome?.toFixed(3) || "0"}</p>
+                      <p className="text-3xl font-bold text-primary">{filteredAnalytics.totalIncome.toFixed(3)}</p>
                       <p className="text-sm text-muted-foreground">{getLocalizedText("إجمالي الدخل (د.ك)", "Total Income (KD)", "Revenu Total (KD)")}</p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="pt-6 text-center">
-                      <p className="text-3xl font-bold text-green-600">{analytics?.completedOrders || 0}</p>
+                      <p className="text-3xl font-bold">{filteredAnalytics.totalOrders}</p>
+                      <p className="text-sm text-muted-foreground">{getLocalizedText("إجمالي الطلبات", "Total Orders", "Total Commandes")}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <p className="text-3xl font-bold text-green-600">{filteredAnalytics.completedOrders}</p>
                       <p className="text-sm text-muted-foreground">{getLocalizedText("طلبات مكتملة", "Completed Orders", "Commandes Terminées")}</p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="pt-6 text-center">
-                      <p className="text-3xl font-bold text-red-600">{analytics?.cancelledOrders || 0}</p>
+                      <p className="text-3xl font-bold text-red-600">{filteredAnalytics.cancelledOrders}</p>
                       <p className="text-sm text-muted-foreground">{getLocalizedText("طلبات ملغية", "Cancelled Orders", "Commandes Annulées")}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Additional Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <p className="text-3xl font-bold text-yellow-600">{filteredAnalytics.pendingOrders}</p>
+                      <p className="text-sm text-muted-foreground">{getLocalizedText("طلبات قيد الانتظار", "Pending Orders", "Commandes en Attente")}</p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="pt-6 text-center">
-                      <p className="text-3xl font-bold text-chart-1">{analytics?.referralCount || 0}</p>
-                      <p className="text-sm text-muted-foreground">{getLocalizedText("الإحالات", "Referrals", "Parrainages")}</p>
+                      <p className="text-3xl font-bold text-blue-600">{filteredAnalytics.inProgressOrders}</p>
+                      <p className="text-sm text-muted-foreground">{getLocalizedText("طلبات قيد التنفيذ", "In Progress", "En Cours")}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <p className="text-3xl font-bold text-purple-600">{filteredAnalytics.averageOrderValue.toFixed(3)}</p>
+                      <p className="text-sm text-muted-foreground">{getLocalizedText("متوسط قيمة الطلب (د.ك)", "Avg Order Value (KD)", "Valeur Moy. Commande (KD)")}</p>
                     </CardContent>
                   </Card>
                 </div>
+
+                {/* Completion Rate */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">{getLocalizedText("معدل الإنجاز", "Completion Rate", "Taux d'Achèvement")}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 bg-muted rounded-full h-4 overflow-hidden">
+                        <div 
+                          className="bg-green-500 h-full transition-all duration-500"
+                          style={{ 
+                            width: `${filteredAnalytics.totalOrders > 0 ? (filteredAnalytics.completedOrders / filteredAnalytics.totalOrders) * 100 : 0}%` 
+                          }}
+                        />
+                      </div>
+                      <span className="text-lg font-bold">
+                        {filteredAnalytics.totalOrders > 0 
+                          ? Math.round((filteredAnalytics.completedOrders / filteredAnalytics.totalOrders) * 100) 
+                          : 0}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between mt-2 text-sm text-muted-foreground">
+                      <span>{getLocalizedText("مكتمل", "Completed", "Terminé")}: {filteredAnalytics.completedOrders}</span>
+                      <span>{getLocalizedText("إجمالي", "Total", "Total")}: {filteredAnalytics.totalOrders}</span>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
 
