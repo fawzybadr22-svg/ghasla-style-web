@@ -14,6 +14,7 @@ export const referralStatusEnum = pgEnum("referral_status", ["pending", "complet
 export const offerTargetAudienceEnum = pgEnum("offer_target_audience", ["all", "new_customers", "existing_customers"]);
 export const offerLoyaltyScopeEnum = pgEnum("offer_loyalty_scope", ["inside_loyalty", "outside_loyalty"]);
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "initiated", "captured", "failed", "refunded", "cancelled"]);
+export const customerTierEnum = pgEnum("customer_tier", ["bronze", "silver", "gold"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -39,6 +40,8 @@ export const users = pgTable("users", {
   isAvailable: boolean("is_available").notNull().default(true),
   currentLatitude: real("current_latitude"),
   currentLongitude: real("current_longitude"),
+  tier: customerTierEnum("tier").notNull().default("bronze"),
+  completedOrdersCount: integer("completed_orders_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

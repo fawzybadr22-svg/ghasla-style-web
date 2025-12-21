@@ -47,6 +47,14 @@ export default function AdminDashboard() {
   });
   const [analyticsFilterMode, setAnalyticsFilterMode] = useState<"daily" | "weekly" | "monthly" | "all">("monthly");
 
+  // Customer filter state
+  const [customerDate, setCustomerDate] = useState<string>(() => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  });
+  const [customerFilterMode, setCustomerFilterMode] = useState<"daily" | "weekly" | "monthly" | "all">("all");
+  const [customerTierFilter, setCustomerTierFilter] = useState<"all" | "bronze" | "silver" | "gold">("all");
+
   // Package editing state
   const [editingPackage, setEditingPackage] = useState<ServicePackage | null>(null);
   const [isAddingPackage, setIsAddingPackage] = useState(false);
@@ -201,6 +209,66 @@ export default function AdminDashboard() {
     enabled: isAdmin && section === "customers",
   });
 
+  // Filter customers based on registration date and tier
+  const filteredCustomers = useMemo(() => {
+    if (!customers) return [];
+    
+    let filtered = customers;
+    
+    // Filter by tier
+    if (customerTierFilter !== "all") {
+      filtered = filtered.filter(c => c.tier === customerTierFilter);
+    }
+    
+    // Filter by time
+    if (customerFilterMode === "all") return filtered;
+    
+    const selectedDateObj = new Date(customerDate);
+    
+    if (customerFilterMode === "daily") {
+      return filtered.filter(customer => {
+        const createdDate = new Date(customer.createdAt).toISOString().split("T")[0];
+        return createdDate === customerDate;
+      });
+    }
+    
+    if (customerFilterMode === "weekly") {
+      const startOfWeek = new Date(selectedDateObj);
+      startOfWeek.setDate(selectedDateObj.getDate() - selectedDateObj.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+      
+      return filtered.filter(customer => {
+        const createdDate = new Date(customer.createdAt);
+        return createdDate >= startOfWeek && createdDate <= endOfWeek;
+      });
+    }
+    
+    if (customerFilterMode === "monthly") {
+      const year = selectedDateObj.getFullYear();
+      const month = selectedDateObj.getMonth();
+      return filtered.filter(customer => {
+        const createdDate = new Date(customer.createdAt);
+        return createdDate.getFullYear() === year && createdDate.getMonth() === month;
+      });
+    }
+    
+    return filtered;
+  }, [customers, customerFilterMode, customerDate, customerTierFilter]);
+
+  // Calculate customer stats by tier
+  const customerStats = useMemo(() => {
+    if (!customers) return { total: 0, bronze: 0, silver: 0, gold: 0 };
+    return {
+      total: customers.length,
+      bronze: customers.filter(c => c.tier === "bronze").length,
+      silver: customers.filter(c => c.tier === "silver").length,
+      gold: customers.filter(c => c.tier === "gold").length,
+    };
+  }, [customers]);
+
   const { data: loyaltyConfig } = useQuery<LoyaltyConfig>({
     queryKey: ["/api/loyalty/config"],
     enabled: isAdmin && section === "loyalty",
@@ -262,6 +330,22 @@ export default function AdminDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       toast({ title: getLocalizedText("تم تعديل النقاط", "Points Adjusted", "Points Ajustés") });
+    },
+  });
+
+  const upgradeCustomerTierMutation = useMutation({
+    mutationFn: async ({ id, tier }: { id: string; tier: "bronze" | "silver" | "gold" }) => {
+      const res = await fetch(`/api/admin/users/${id}/tier`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tier, performedBy: user?.id }),
+      });
+      if (!res.ok) throw new Error("Failed to upgrade tier");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: getLocalizedText("تم ترقية العميل", "Customer Upgraded", "Client Promu") });
     },
   });
 
@@ -1043,26 +1127,203 @@ export default function AdminDashboard() {
 
             {section === "customers" && (
               <div className="space-y-6">
+                {/* Header */}
                 <h1 className="text-2xl font-bold">{t("admin.customers")}</h1>
+                
+                {/* Stats Cards by Tier */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card className={`hover-elevate cursor-pointer ${customerTierFilter === "all" ? "ring-2 ring-primary" : ""}`} onClick={() => setCustomerTierFilter("all")}>
+                    <CardContent className="pt-6 text-center">
+                      <p className="text-3xl font-bold">{customerStats.total}</p>
+                      <p className="text-sm text-muted-foreground">{getLocalizedText("الكل", "All", "Tous")}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className={`hover-elevate cursor-pointer ${customerTierFilter === "bronze" ? "ring-2 ring-amber-600" : ""}`} onClick={() => setCustomerTierFilter("bronze")}>
+                    <CardContent className="pt-6 text-center">
+                      <p className="text-3xl font-bold text-amber-600">{customerStats.bronze}</p>
+                      <p className="text-sm text-muted-foreground">{getLocalizedText("برونزي", "Bronze", "Bronze")}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className={`hover-elevate cursor-pointer ${customerTierFilter === "silver" ? "ring-2 ring-gray-400" : ""}`} onClick={() => setCustomerTierFilter("silver")}>
+                    <CardContent className="pt-6 text-center">
+                      <p className="text-3xl font-bold text-gray-500">{customerStats.silver}</p>
+                      <p className="text-sm text-muted-foreground">{getLocalizedText("فضي", "Silver", "Argent")}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className={`hover-elevate cursor-pointer ${customerTierFilter === "gold" ? "ring-2 ring-yellow-500" : ""}`} onClick={() => setCustomerTierFilter("gold")}>
+                    <CardContent className="pt-6 text-center">
+                      <p className="text-3xl font-bold text-yellow-500">{customerStats.gold}</p>
+                      <p className="text-sm text-muted-foreground">{getLocalizedText("ذهبي", "Gold", "Or")}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Time Filter Controls */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex bg-muted/50 rounded-lg p-1 gap-1">
+                    <Button 
+                      variant={customerFilterMode === "daily" ? "default" : "ghost"} 
+                      size="sm"
+                      onClick={() => setCustomerFilterMode("daily")}
+                      data-testid="button-customer-filter-daily"
+                    >
+                      {getLocalizedText("يومي", "Daily", "Quotidien")}
+                    </Button>
+                    <Button 
+                      variant={customerFilterMode === "weekly" ? "default" : "ghost"} 
+                      size="sm"
+                      onClick={() => setCustomerFilterMode("weekly")}
+                      data-testid="button-customer-filter-weekly"
+                    >
+                      {getLocalizedText("أسبوعي", "Weekly", "Hebdomadaire")}
+                    </Button>
+                    <Button 
+                      variant={customerFilterMode === "monthly" ? "default" : "ghost"} 
+                      size="sm"
+                      onClick={() => setCustomerFilterMode("monthly")}
+                      data-testid="button-customer-filter-monthly"
+                    >
+                      {getLocalizedText("شهري", "Monthly", "Mensuel")}
+                    </Button>
+                    <Button 
+                      variant={customerFilterMode === "all" ? "default" : "ghost"} 
+                      size="sm"
+                      onClick={() => setCustomerFilterMode("all")}
+                      data-testid="button-customer-filter-all"
+                    >
+                      {getLocalizedText("الكل", "All", "Tout")}
+                    </Button>
+                  </div>
+                  
+                  {customerFilterMode !== "all" && (
+                    <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => {
+                          const d = new Date(customerDate);
+                          if (customerFilterMode === "daily") d.setDate(d.getDate() - 1);
+                          else if (customerFilterMode === "weekly") d.setDate(d.getDate() - 7);
+                          else if (customerFilterMode === "monthly") d.setMonth(d.getMonth() - 1);
+                          setCustomerDate(d.toISOString().split("T")[0]);
+                        }}
+                        data-testid="button-customer-prev-period"
+                      >
+                        {i18n.language === "ar" ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {customerFilterMode === "monthly" ? (
+                          <Input
+                            type="month"
+                            value={customerDate.slice(0, 7)}
+                            onChange={(e) => setCustomerDate(e.target.value + "-01")}
+                            className="w-auto min-w-[140px]"
+                            data-testid="input-customer-month-filter"
+                          />
+                        ) : (
+                          <Input
+                            type="date"
+                            value={customerDate}
+                            onChange={(e) => setCustomerDate(e.target.value)}
+                            className="w-auto min-w-[140px]"
+                            data-testid="input-customer-date-filter"
+                          />
+                        )}
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => {
+                          const d = new Date(customerDate);
+                          if (customerFilterMode === "daily") d.setDate(d.getDate() + 1);
+                          else if (customerFilterMode === "weekly") d.setDate(d.getDate() + 7);
+                          else if (customerFilterMode === "monthly") d.setMonth(d.getMonth() + 1);
+                          setCustomerDate(d.toISOString().split("T")[0]);
+                        }}
+                        data-testid="button-customer-next-period"
+                      >
+                        {i18n.language === "ar" ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setCustomerDate(new Date().toISOString().split("T")[0])}
+                        data-testid="button-customer-today"
+                      >
+                        {getLocalizedText("اليوم", "Today", "Aujourd'hui")}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Customers List */}
                 <Card>
-                  <CardContent className="pt-6">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <CardTitle className="text-lg">
+                        {getLocalizedText(
+                          `عدد العملاء: ${filteredCustomers.length}`,
+                          `Customers: ${filteredCustomers.length}`,
+                          `Clients: ${filteredCustomers.length}`
+                        )}
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
                     {customersLoading ? (
                       <div className="space-y-2">
                         {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full" />)}
                       </div>
-                    ) : customers?.length ? (
+                    ) : filteredCustomers.length ? (
                       <div className="space-y-3">
-                        {customers.map((customer) => (
+                        {filteredCustomers.map((customer) => (
                           <div key={customer.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-lg border gap-4" data-testid={`customer-row-${customer.id}`}>
                             <div className="flex-1">
-                              <p className="font-medium">{customer.name}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">{customer.name}</p>
+                                {/* Tier Badge */}
+                                <Badge 
+                                  variant="outline" 
+                                  className={
+                                    customer.tier === "gold" ? "bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-600" :
+                                    customer.tier === "silver" ? "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-700/30 dark:text-gray-300 dark:border-gray-500" :
+                                    "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-600"
+                                  }
+                                >
+                                  {customer.tier === "gold" ? getLocalizedText("ذهبي", "Gold", "Or") :
+                                   customer.tier === "silver" ? getLocalizedText("فضي", "Silver", "Argent") :
+                                   getLocalizedText("برونزي", "Bronze", "Bronze")}
+                                </Badge>
+                              </div>
                               <p className="text-sm text-muted-foreground">{customer.email}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {getLocalizedText("الطلبات المكتملة:", "Completed Orders:", "Commandes Terminées:")} {customer.completedOrdersCount || 0}
+                              </p>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
                               <Badge variant="outline">{customer.loyaltyPoints} pts</Badge>
                               <Badge variant={customer.status === "active" ? "default" : "destructive"}>
                                 {customer.status}
                               </Badge>
+                              
+                              {/* Tier Upgrade Dropdown */}
+                              <Select
+                                value={customer.tier || "bronze"}
+                                onValueChange={(tier: "bronze" | "silver" | "gold") => 
+                                  upgradeCustomerTierMutation.mutate({ id: customer.id, tier })
+                                }
+                              >
+                                <SelectTrigger className="w-[120px]" data-testid={`select-tier-${customer.id}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="bronze">{getLocalizedText("برونزي", "Bronze", "Bronze")}</SelectItem>
+                                  <SelectItem value="silver">{getLocalizedText("فضي", "Silver", "Argent")}</SelectItem>
+                                  <SelectItem value="gold">{getLocalizedText("ذهبي", "Gold", "Or")}</SelectItem>
+                                </SelectContent>
+                              </Select>
+
                               <Button
                                 size="sm"
                                 variant={customer.status === "active" ? "destructive" : "default"}
@@ -1084,7 +1345,10 @@ export default function AdminDashboard() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-muted-foreground text-center py-8">{t("common.noData")}</p>
+                      <div className="text-center py-8">
+                        <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                        <p className="text-muted-foreground">{t("common.noData")}</p>
+                      </div>
                     )}
                   </CardContent>
                 </Card>

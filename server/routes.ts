@@ -1007,6 +1007,37 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: Upgrade customer tier
+  app.patch("/api/admin/users/:id/tier", async (req, res) => {
+    try {
+      const { tier, performedBy } = req.body;
+      if (!["bronze", "silver", "gold"].includes(tier)) {
+        return res.status(400).json({ error: "Invalid tier. Must be bronze, silver, or gold" });
+      }
+
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const updated = await storage.updateUser(req.params.id, { tier });
+
+      // Audit log
+      await storage.createAuditLog({
+        actionType: "upgrade_customer_tier",
+        performedBy: performedBy || "admin",
+        targetCollection: "users",
+        targetId: req.params.id,
+        oldValue: JSON.stringify({ tier: user.tier }),
+        newValue: JSON.stringify({ tier }),
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   // Admin: Update loyalty config
   app.patch("/api/admin/loyalty/config", async (req, res) => {
     try {
