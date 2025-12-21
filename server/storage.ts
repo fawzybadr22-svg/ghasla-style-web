@@ -3,14 +3,14 @@ import { eq, desc, and, gte, lte, lt, sql, count } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import {
   users, servicePackages, orders, loyaltyConfig, loyaltyTransactions,
-  referrals, blogPosts, testimonials, galleryItems, contactMessages, auditLogs, orderRatings, offers,
+  referrals, blogPosts, testimonials, galleryItems, contactMessages, auditLogs, orderRatings, offers, payments,
   type User, type InsertUser, type ServicePackage, type InsertServicePackage,
   type Order, type InsertOrder, type LoyaltyConfig, type InsertLoyaltyConfig,
   type LoyaltyTransaction, type InsertLoyaltyTransaction, type Referral, type InsertReferral,
   type BlogPost, type InsertBlogPost, type Testimonial, type InsertTestimonial,
   type GalleryItem, type InsertGalleryItem, type ContactMessage, type InsertContactMessage,
   type AuditLog, type InsertAuditLog, type OrderRating, type InsertOrderRating,
-  type Offer, type InsertOffer
+  type Offer, type InsertOffer, type Payment, type InsertPayment
 } from "@shared/schema";
 
 function generateReferralCode(): string {
@@ -106,6 +106,14 @@ export interface IStorage {
   createOffer(offer: InsertOffer): Promise<Offer>;
   updateOffer(id: string, data: Partial<Offer>): Promise<Offer | undefined>;
   deleteOffer(id: string): Promise<boolean>;
+
+  // Payments
+  getPayment(id: string): Promise<Payment | undefined>;
+  getPaymentByOrderId(orderId: string): Promise<Payment | undefined>;
+  getPaymentByGatewayId(gatewayChargeId: string): Promise<Payment | undefined>;
+  getPaymentsByCustomer(customerId: string): Promise<Payment[]>;
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  updatePayment(id: string, data: Partial<Payment>): Promise<Payment | undefined>;
 
   // Analytics
   getAnalytics(startDate: Date, endDate: Date): Promise<{
@@ -496,6 +504,37 @@ export class DatabaseStorage implements IStorage {
   async deleteOffer(id: string): Promise<boolean> {
     await db.delete(offers).where(eq(offers.id, id));
     return true;
+  }
+
+  // Payments
+  async getPayment(id: string): Promise<Payment | undefined> {
+    const [payment] = await db.select().from(payments).where(eq(payments.id, id));
+    return payment;
+  }
+
+  async getPaymentByOrderId(orderId: string): Promise<Payment | undefined> {
+    const [payment] = await db.select().from(payments).where(eq(payments.orderId, orderId));
+    return payment;
+  }
+
+  async getPaymentByGatewayId(gatewayChargeId: string): Promise<Payment | undefined> {
+    const [payment] = await db.select().from(payments).where(eq(payments.gatewayChargeId, gatewayChargeId));
+    return payment;
+  }
+
+  async getPaymentsByCustomer(customerId: string): Promise<Payment[]> {
+    return db.select().from(payments).where(eq(payments.customerId, customerId)).orderBy(desc(payments.createdAt));
+  }
+
+  async createPayment(payment: InsertPayment): Promise<Payment> {
+    const id = randomUUID();
+    const [created] = await db.insert(payments).values({ ...payment, id }).returning();
+    return created;
+  }
+
+  async updatePayment(id: string, data: Partial<Payment>): Promise<Payment | undefined> {
+    const [updated] = await db.update(payments).set({ ...data, updatedAt: new Date() }).where(eq(payments.id, id)).returning();
+    return updated;
   }
 
   // Analytics

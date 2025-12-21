@@ -13,6 +13,7 @@ export const loyaltyTransactionTypeEnum = pgEnum("loyalty_transaction_type", ["e
 export const referralStatusEnum = pgEnum("referral_status", ["pending", "completed", "invalid"]);
 export const offerTargetAudienceEnum = pgEnum("offer_target_audience", ["all", "new_customers", "existing_customers"]);
 export const offerLoyaltyScopeEnum = pgEnum("offer_loyalty_scope", ["inside_loyalty", "outside_loyalty"]);
+export const paymentStatusEnum = pgEnum("payment_status", ["pending", "initiated", "captured", "failed", "refunded", "cancelled"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -285,6 +286,43 @@ export const orderRatings = pgTable("order_ratings", {
 export const insertOrderRatingSchema = createInsertSchema(orderRatings).omit({ id: true, createdAt: true });
 export type InsertOrderRating = z.infer<typeof insertOrderRatingSchema>;
 export type OrderRating = typeof orderRatings.$inferSelect;
+
+// Payments table - for KNET/Tap Payments integration
+export const payments = pgTable("payments", {
+  id: text("id").primaryKey(),
+  orderId: text("order_id").notNull().references(() => orders.id),
+  customerId: text("customer_id").notNull().references(() => users.id),
+  amountKD: real("amount_kd").notNull(),
+  currency: text("currency").notNull().default("KWD"),
+  status: paymentStatusEnum("status").notNull().default("pending"),
+  paymentGateway: text("payment_gateway").notNull().default("tap"), // tap, knet, myfatoorah
+  gatewayTransactionId: text("gateway_transaction_id"),
+  gatewayChargeId: text("gateway_charge_id"),
+  gatewayTrackingId: text("gateway_tracking_id"),
+  gatewayResponse: text("gateway_response"), // JSON string of full response
+  paymentUrl: text("payment_url"),
+  callbackUrl: text("callback_url"),
+  customerEmail: text("customer_email"),
+  customerPhone: text("customer_phone"),
+  cardBrand: text("card_brand"), // KNET, VISA, etc.
+  cardLastFour: text("card_last_four"),
+  errorMessage: text("error_message"),
+  paidAt: timestamp("paid_at"),
+  refundedAt: timestamp("refunded_at"),
+  refundAmount: real("refund_amount"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertPaymentSchema = createInsertSchema(payments).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true,
+  paidAt: true,
+  refundedAt: true,
+});
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type Payment = typeof payments.$inferSelect;
 
 // Kuwait Areas for service validation - with availability status
 // Areas currently available for service
