@@ -159,9 +159,9 @@ export default function Booking() {
       }
     } catch (error: any) {
       let message = getLocalizedText(
-        "فشل تحديد الموقع",
-        "Failed to get location",
-        "Échec de la géolocalisation"
+        "فشل تحديد الموقع. يرجى إدخال العنوان يدوياً",
+        "Failed to get location. Please enter address manually",
+        "Échec de la géolocalisation. Veuillez saisir l'adresse manuellement"
       );
       if (error.code === 1) {
         message = getLocalizedText(
