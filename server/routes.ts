@@ -533,18 +533,17 @@ export async function registerRoutes(
 
       // Log the deletion request for audit purposes
       await storage.createAuditLog({
-        action: "ACCOUNT_DELETION_REQUESTED",
-        userId: userId,
+        actionType: "ACCOUNT_DELETION_REQUESTED",
+        performedBy: userId,
         targetCollection: "users",
         targetId: userId,
-        oldValue: { email: user.email, name: user.name },
-        newValue: { status: "deletion_scheduled" },
+        oldValue: JSON.stringify({ email: user.email, name: user.name }),
+        newValue: JSON.stringify({ status: "deletion_scheduled" }),
       });
 
-      // Mark user as pending deletion (set a flag or deactivate)
+      // Mark user as pending deletion by setting status to blocked
       await storage.updateUser(userId, { 
-        isActive: false,
-        deletionRequestedAt: new Date().toISOString(),
+        status: "blocked",
       });
 
       res.json({ 

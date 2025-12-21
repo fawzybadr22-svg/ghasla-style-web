@@ -191,77 +191,110 @@ export default function DeleteAccount() {
               </ul>
             </section>
 
-            {/* Deletion Form - Only for logged in users */}
-            {user && (
-              <section className="border-2 border-destructive/20 rounded-lg p-6 bg-destructive/5">
-                <div className="flex items-center gap-3 mb-4">
-                  <AlertTriangle className="h-6 w-6 text-destructive" />
-                  <h2 className="text-xl font-bold text-destructive">
-                    {getLocalizedText("طلب حذف الحساب", "Request Account Deletion", "Demander la Suppression")}
-                  </h2>
-                </div>
-                
-                <p className="text-muted-foreground mb-6">
-                  {getLocalizedText(
-                    "تحذير: هذا الإجراء لا يمكن التراجع عنه. ستفقد جميع بياناتك ونقاط الولاء.",
-                    "Warning: This action cannot be undone. You will lose all your data and loyalty points.",
-                    "Avertissement: Cette action est irréversible. Vous perdrez toutes vos données."
-                  )}
-                </p>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-text">
-                      {getLocalizedText(
-                        `اكتب "${getLocalizedText("حذف حسابي", "DELETE MY ACCOUNT", "SUPPRIMER MON COMPTE")}" للتأكيد`,
-                        `Type "${getLocalizedText("حذف حسابي", "DELETE MY ACCOUNT", "SUPPRIMER MON COMPTE")}" to confirm`,
-                        `Tapez "${getLocalizedText("حذف حسابي", "DELETE MY ACCOUNT", "SUPPRIMER MON COMPTE")}" pour confirmer`
-                      )}
-                    </Label>
-                    <Input
-                      id="confirm-text"
-                      value={confirmText}
-                      onChange={(e) => setConfirmText(e.target.value)}
-                      placeholder={getLocalizedText("حذف حسابي", "DELETE MY ACCOUNT", "SUPPRIMER MON COMPTE")}
-                      data-testid="input-delete-confirm"
-                    />
+            {/* Deletion Form */}
+            <section className="border-2 border-destructive/20 rounded-lg p-6 bg-destructive/5">
+              {user ? (
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <AlertTriangle className="h-6 w-6 text-destructive" />
+                    <h2 className="text-xl font-bold text-destructive">
+                      {getLocalizedText("طلب حذف الحساب", "Request Account Deletion", "Demander la Suppression")}
+                    </h2>
                   </div>
-
-                  <div className="flex items-start gap-3">
-                    <Checkbox
-                      id="understood"
-                      checked={understood}
-                      onCheckedChange={(checked) => setUnderstood(checked === true)}
-                      data-testid="checkbox-delete-understand"
-                    />
-                    <Label htmlFor="understood" className="text-sm text-muted-foreground leading-relaxed">
-                      {getLocalizedText(
-                        "أفهم أن حذف حسابي سيؤدي إلى فقدان جميع بياناتي ونقاط الولاء بشكل دائم ولا يمكن استعادتها.",
-                        "I understand that deleting my account will permanently erase all my data and loyalty points, which cannot be recovered.",
-                        "Je comprends que la suppression de mon compte effacera définitivement toutes mes données et points de fidélité."
-                      )}
-                    </Label>
-                  </div>
-
-                  <Button
-                    variant="destructive"
-                    className="w-full"
-                    onClick={handleDeleteAccount}
-                    disabled={isDeleting || !understood || confirmText !== getLocalizedText("حذف حسابي", "DELETE MY ACCOUNT", "SUPPRIMER MON COMPTE")}
-                    data-testid="button-delete-account"
-                  >
-                    {isDeleting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 me-2 animate-spin" />
-                        {getLocalizedText("جاري المعالجة...", "Processing...", "Traitement...")}
-                      </>
-                    ) : (
-                      getLocalizedText("حذف حسابي نهائياً", "Delete My Account Permanently", "Supprimer Mon Compte Définitivement")
+                  
+                  <p className="text-muted-foreground mb-6">
+                    {getLocalizedText(
+                      "تحذير: هذا الإجراء لا يمكن التراجع عنه. ستفقد جميع بياناتك ونقاط الولاء.",
+                      "Warning: This action cannot be undone. You will lose all your data and loyalty points.",
+                      "Avertissement: Cette action est irréversible. Vous perdrez toutes vos données."
                     )}
-                  </Button>
+                  </p>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-text">
+                        {getLocalizedText(
+                          `اكتب "${getLocalizedText("حذف حسابي", "DELETE MY ACCOUNT", "SUPPRIMER MON COMPTE")}" للتأكيد`,
+                          `Type "${getLocalizedText("حذف حسابي", "DELETE MY ACCOUNT", "SUPPRIMER MON COMPTE")}" to confirm`,
+                          `Tapez "${getLocalizedText("حذف حسابي", "DELETE MY ACCOUNT", "SUPPRIMER MON COMPTE")}" pour confirmer`
+                        )}
+                      </Label>
+                      <Input
+                        id="confirm-text"
+                        value={confirmText}
+                        onChange={(e) => setConfirmText(e.target.value)}
+                        placeholder={getLocalizedText("حذف حسابي", "DELETE MY ACCOUNT", "SUPPRIMER MON COMPTE")}
+                        data-testid="input-delete-confirm"
+                      />
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        id="understood"
+                        checked={understood}
+                        onCheckedChange={(checked) => setUnderstood(checked === true)}
+                        data-testid="checkbox-delete-understand"
+                      />
+                      <Label htmlFor="understood" className="text-sm text-muted-foreground leading-relaxed">
+                        {getLocalizedText(
+                          "أفهم أن حذف حسابي سيؤدي إلى فقدان جميع بياناتي ونقاط الولاء بشكل دائم ولا يمكن استعادتها.",
+                          "I understand that deleting my account will permanently erase all my data and loyalty points, which cannot be recovered.",
+                          "Je comprends que la suppression de mon compte effacera définitivement toutes mes données et points de fidélité."
+                        )}
+                      </Label>
+                    </div>
+
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      onClick={handleDeleteAccount}
+                      disabled={isDeleting || !understood || confirmText !== getLocalizedText("حذف حسابي", "DELETE MY ACCOUNT", "SUPPRIMER MON COMPTE")}
+                      data-testid="button-delete-account"
+                    >
+                      {isDeleting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 me-2 animate-spin" />
+                          {getLocalizedText("جاري المعالجة...", "Processing...", "Traitement...")}
+                        </>
+                      ) : (
+                        getLocalizedText("حذف حسابي نهائياً", "Delete My Account Permanently", "Supprimer Mon Compte Définitivement")
+                      )}
+                    </Button>
+                  </div>
                 </div>
+              ) : (
+                <div className="text-center space-y-4">
+                  <div className="flex items-center justify-center gap-3 mb-4">
+                    <AlertTriangle className="h-6 w-6 text-destructive" />
+                    <h2 className="text-xl font-bold text-destructive">
+                      {getLocalizedText("طلب حذف الحساب", "Request Account Deletion", "Demander la Suppression")}
+                    </h2>
+                  </div>
+                  <p className="text-muted-foreground">
+                    {getLocalizedText(
+                      "لحذف حسابك، يرجى تسجيل الدخول أولاً أو إرسال طلب عبر البريد الإلكتروني:",
+                      "To delete your account, please log in first or send a request via email:",
+                      "Pour supprimer votre compte, veuillez vous connecter d'abord ou envoyer une demande par e-mail:"
+                    )}
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button
+                      variant="outline"
+                      onClick={() => setLocation("/login")}
+                      data-testid="button-login-to-delete"
+                    >
+                      {getLocalizedText("تسجيل الدخول", "Log In", "Se Connecter")}
+                    </Button>
+                    <a href="mailto:privacy@ghaslastyle.com?subject=Account%20Deletion%20Request">
+                      <Button variant="destructive" data-testid="button-email-deletion">
+                        <Mail className="h-4 w-4 me-2" />
+                        {getLocalizedText("إرسال طلب بالبريد", "Send Email Request", "Envoyer par E-mail")}
+                      </Button>
+                    </a>
+                  </div>
+                </div>
+              )}
               </section>
-            )}
 
             {/* Contact Information */}
             <section className="bg-muted/50 rounded-lg p-6">
