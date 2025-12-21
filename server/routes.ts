@@ -544,7 +544,8 @@ export async function registerRoutes(
       // Clean the order ID: remove #, spaces, and trim
       const cleanOrderId = req.params.orderId.replace(/^#/, "").replace(/\s+/g, "").trim();
       
-      const order = await storage.getOrder(cleanOrderId);
+      // Use partial matching to find the order
+      const order = await storage.getOrderByPartialId(cleanOrderId);
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
       }

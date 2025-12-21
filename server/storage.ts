@@ -40,6 +40,7 @@ export interface IStorage {
 
   // Orders
   getOrder(id: string): Promise<Order | undefined>;
+  getOrderByPartialId(partialId: string): Promise<Order | undefined>;
   getOrdersByCustomer(customerId: string): Promise<Order[]>;
   getOrders(filters?: { status?: string; startDate?: Date; endDate?: Date; assignedDriver?: string }): Promise<Order[]>;
   createOrder(order: InsertOrder): Promise<Order>;
@@ -195,6 +196,18 @@ export class DatabaseStorage implements IStorage {
   async getOrder(id: string): Promise<Order | undefined> {
     const [order] = await db.select().from(orders).where(eq(orders.id, id));
     return order;
+  }
+
+  async getOrderByPartialId(partialId: string): Promise<Order | undefined> {
+    // First try exact match
+    const [exactOrder] = await db.select().from(orders).where(eq(orders.id, partialId));
+    if (exactOrder) return exactOrder;
+    
+    // Then try partial match (ID starts with the given partial)
+    const [partialOrder] = await db.select().from(orders)
+      .where(sql`${orders.id} LIKE ${partialId + '%'}`)
+      .limit(1);
+    return partialOrder;
   }
 
   async getOrdersByCustomer(customerId: string): Promise<Order[]> {
