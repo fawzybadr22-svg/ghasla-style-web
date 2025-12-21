@@ -30,7 +30,7 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage
 - **Primary Database**: PostgreSQL accessed via Drizzle ORM
 - **Schema Location**: `shared/schema.ts` contains all table definitions
-- **Key Entities**: Users, ServicePackages, Orders, LoyaltyConfig, LoyaltyTransactions, Referrals, BlogPosts, Testimonials, GalleryItems, ContactMessages, AuditLogs
+- **Key Entities**: Users, ServicePackages, Orders, Payments, LoyaltyConfig, LoyaltyTransactions, Referrals, BlogPosts, Testimonials, GalleryItems, ContactMessages, AuditLogs
 
 ### Authentication
 - **Provider**: Firebase Authentication (configured in `client/src/lib/firebase.ts`)
@@ -43,6 +43,25 @@ Preferred communication style: Simple, everyday language.
 - **Internal Admin Routes** (require SUPER_ADMIN_SECRET):
   - `POST /internal/make-super-admin`: Set superAdmin claim (one-time setup)
   - `POST /internal/set-admin`: Grant/revoke admin role
+
+### Payment Integration
+- **Gateway**: Tap Payments (supports KNET for Kuwait)
+- **Payment Table**: `payments` table stores all payment records with gateway references
+- **Flow**:
+  1. Customer selects "online" payment during booking
+  2. Order created → Payment record created → Redirect to checkout page
+  3. In production: Redirect to Tap/KNET gateway → Webhook confirms payment
+  4. Development: Simulation endpoints for testing (disabled in production)
+- **API Endpoints**:
+  - `POST /api/payments/create`: Create payment for an order
+  - `POST /api/payments/webhook`: Receive payment status from gateway
+  - `GET /api/payments/:id`: Get payment details
+  - `GET /api/payments/order/:orderId`: Get payment by order ID
+  - `GET /api/payments/customer/:customerId`: Customer payment history
+- **Security**:
+  - Simulation endpoints blocked in production (NODE_ENV=production)
+  - Webhook should validate gateway signatures in production
+  - Payment status transitions enforced server-side
 
 ### Real-Time Features
 - **Firestore Orders**: Real-time order tracking with onSnapshot

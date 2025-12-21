@@ -231,6 +231,78 @@ export default function Booking() {
       const data = await response.json();
 
       if (response.ok) {
+        // If online payment, create payment and redirect to checkout
+        if (formData.paymentMethod === "online") {
+          try {
+            const paymentResponse = await fetch("/api/payments/create", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                orderId: data.id,
+                customerId: user.id,
+                amountKD: finalPrice,
+                customerEmail: user.email,
+                customerPhone: user.phone,
+              }),
+            });
+            
+            const paymentData = await paymentResponse.json();
+            
+            if (paymentResponse.ok && paymentData.paymentId) {
+              setFormData({
+                carType: "sedan",
+                carDetails: "",
+                packageId: "",
+                address: "",
+                area: "",
+                date: "",
+                time: "",
+                paymentMethod: "cash",
+                pointsToRedeem: 0,
+              });
+              setStep(1);
+              setLocation(`/payment/checkout/${paymentData.paymentId}`);
+              return;
+            } else {
+              // Payment creation failed - fallback to cash and continue
+              toast({
+                title: getLocalizedText("تنبيه", "Notice", "Avis"),
+                description: getLocalizedText(
+                  "فشل إنشاء عملية الدفع. سيتم التعامل مع طلبك كدفع نقدي.",
+                  "Failed to create payment. Your order will be processed as cash payment.",
+                  "Échec de la création du paiement. Votre commande sera traitée en espèces."
+                ),
+              });
+              // Update order to cash payment as fallback
+              await fetch(`/api/orders/${data.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ paymentMethod: "cash" }),
+              });
+              // Continue to success flow with cash payment
+            }
+          } catch (paymentError) {
+            console.error("Payment creation failed:", paymentError);
+            toast({
+              title: getLocalizedText("تنبيه", "Notice", "Avis"),
+              description: getLocalizedText(
+                "حدث خطأ في الاتصال. سيتم التعامل مع طلبك كدفع نقدي.",
+                "Connection error. Your order will be processed as cash payment.",
+                "Erreur de connexion. Votre commande sera traitée en espèces."
+              ),
+            });
+            // Update order to cash payment as fallback
+            try {
+              await fetch(`/api/orders/${data.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ paymentMethod: "cash" }),
+              });
+            } catch {}
+            // Continue to success flow with cash payment
+          }
+        }
+        
         toast({
           title: t("booking.success"),
           description: `${t("booking.orderNumber")}: ${data.id}`,

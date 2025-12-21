@@ -2309,8 +2309,16 @@ export async function registerRoutes(
     }
   });
 
-  // Simulate successful payment (for testing without real gateway)
+  // Simulate successful payment (DEVELOPMENT ONLY - for testing without real gateway)
+  // In production, payments should ONLY be confirmed via webhook from Tap/KNET
   app.post("/api/payments/:id/simulate-success", async (req, res) => {
+    // SECURITY: Only allow in development environment
+    if (process.env.NODE_ENV === "production") {
+      return res.status(403).json({ 
+        error: "Payment simulation is disabled in production. Use real payment gateway." 
+      });
+    }
+
     try {
       const payment = await storage.getPayment(req.params.id);
       if (!payment) {
@@ -2332,14 +2340,21 @@ export async function registerRoutes(
       // Update order as paid
       await storage.updateOrder(payment.orderId, { isPaid: true });
 
-      res.json({ success: true, message: "Payment simulated successfully" });
+      res.json({ success: true, message: "Payment simulated successfully (DEV ONLY)" });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Simulate failed payment (for testing)
+  // Simulate failed payment (DEVELOPMENT ONLY - for testing)
   app.post("/api/payments/:id/simulate-failure", async (req, res) => {
+    // SECURITY: Only allow in development environment
+    if (process.env.NODE_ENV === "production") {
+      return res.status(403).json({ 
+        error: "Payment simulation is disabled in production. Use real payment gateway." 
+      });
+    }
+
     try {
       const payment = await storage.getPayment(req.params.id);
       if (!payment) {
@@ -2355,7 +2370,7 @@ export async function registerRoutes(
         errorMessage: req.body.errorMessage || "Payment declined",
       });
 
-      res.json({ success: true, message: "Payment failure simulated" });
+      res.json({ success: true, message: "Payment failure simulated (DEV ONLY)" });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
