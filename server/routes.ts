@@ -2174,5 +2174,202 @@ export async function registerRoutes(
     }
   });
 
+  // ====================
+  // PAYMENTS ROUTES
+  // ====================
+
+  // Create payment for an order
+  app.post("/api/payments/create", async (req, res) => {
+    try {
+      const { orderId, customerId, amountKD, customerEmail, customerPhone, paymentGateway } = req.body;
+
+      if (!orderId || !customerId || !amountKD) {
+        return res.status(400).json({ error: "orderId, customerId and amountKD are required" });
+      }
+
+      // Check if order exists
+      const order = await storage.getOrder(orderId);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      // Check if payment already exists for this order
+      const existingPayment = await storage.getPaymentByOrderId(orderId);
+      if (existingPayment && existingPayment.status === "captured") {
+        return res.status(400).json({ error: "Order already paid" });
+      }
+
+      // Create payment record
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      const payment = await storage.createPayment({
+        orderId,
+        customerId,
+        amountKD,
+        currency: "KWD",
+        status: "pending",
+        paymentGateway: paymentGateway || "tap",
+        customerEmail,
+        customerPhone,
+        callbackUrl: `${baseUrl}/api/payments/callback`,
+      });
+
+      // TODO: Integrate with actual Tap Payments API
+      // For now, return a mock payment URL that simulates the gateway
+      // In production, this would call Tap Payments API to create a charge
+      const mockPaymentUrl = `${baseUrl}/payment/checkout/${payment.id}`;
+
+      const updated = await storage.updatePayment(payment.id, {
+        status: "initiated",
+        paymentUrl: mockPaymentUrl,
+      });
+
+      res.status(201).json({
+        paymentId: payment.id,
+        paymentUrl: mockPaymentUrl,
+        status: "initiated",
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Payment webhook callback (for Tap Payments)
+  app.post("/api/payments/webhook", async (req, res) => {
+    try {
+      const { id, status, reference, source, amount, currency, transaction } = req.body;
+
+      // Find payment by gateway charge ID or reference
+      let payment = await storage.getPaymentByGatewayId(id);
+      
+      if (!payment && reference?.payment) {
+        payment = await storage.getPayment(reference.payment);
+      }
+
+      if (!payment) {
+        console.log("Payment not found for webhook:", id);
+        return res.status(200).json({ received: true });
+      }
+
+      // Map Tap status to our status
+      let newStatus: "pending" | "initiated" | "captured" | "failed" | "refunded" | "cancelled" = "pending";
+      if (status === "CAPTURED") newStatus = "captured";
+      else if (status === "FAILED") newStatus = "failed";
+      else if (status === "REFUNDED") newStatus = "refunded";
+      else if (status === "CANCELLED" || status === "DECLINED") newStatus = "cancelled";
+
+      const updateData: any = {
+        status: newStatus,
+        gatewayChargeId: id,
+        gatewayResponse: JSON.stringify(req.body),
+      };
+
+      if (source?.payment_method) updateData.cardBrand = source.payment_method;
+      if (source?.last_four) updateData.cardLastFour = source.last_four;
+      if (transaction?.id) updateData.gatewayTransactionId = transaction.id;
+
+      if (newStatus === "captured") {
+        updateData.paidAt = new Date();
+        
+        // Update order as paid
+        await storage.updateOrder(payment.orderId, { isPaid: true });
+      }
+
+      await storage.updatePayment(payment.id, updateData);
+
+      res.json({ received: true });
+    } catch (error: any) {
+      console.error("Webhook error:", error);
+      res.status(200).json({ received: true, error: error.message });
+    }
+  });
+
+  // Get payment status
+  app.get("/api/payments/:id", async (req, res) => {
+    try {
+      const payment = await storage.getPayment(req.params.id);
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+      res.json(payment);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get payment by order ID
+  app.get("/api/payments/order/:orderId", async (req, res) => {
+    try {
+      const payment = await storage.getPaymentByOrderId(req.params.orderId);
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found for this order" });
+      }
+      res.json(payment);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Simulate successful payment (for testing without real gateway)
+  app.post("/api/payments/:id/simulate-success", async (req, res) => {
+    try {
+      const payment = await storage.getPayment(req.params.id);
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+
+      if (payment.status === "captured") {
+        return res.status(400).json({ error: "Payment already completed" });
+      }
+
+      // Update payment as successful
+      await storage.updatePayment(payment.id, {
+        status: "captured",
+        paidAt: new Date(),
+        cardBrand: "KNET",
+        gatewayTransactionId: `SIM-${Date.now()}`,
+      });
+
+      // Update order as paid
+      await storage.updateOrder(payment.orderId, { isPaid: true });
+
+      res.json({ success: true, message: "Payment simulated successfully" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Simulate failed payment (for testing)
+  app.post("/api/payments/:id/simulate-failure", async (req, res) => {
+    try {
+      const payment = await storage.getPayment(req.params.id);
+      if (!payment) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+
+      if (payment.status === "captured") {
+        return res.status(400).json({ error: "Cannot fail a completed payment" });
+      }
+
+      await storage.updatePayment(payment.id, {
+        status: "failed",
+        errorMessage: req.body.errorMessage || "Payment declined",
+      });
+
+      res.json({ success: true, message: "Payment failure simulated" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Customer payment history
+  app.get("/api/payments/customer/:customerId", async (req, res) => {
+    try {
+      const payments = await storage.getPaymentsByCustomer(req.params.customerId);
+      res.json(payments);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }
