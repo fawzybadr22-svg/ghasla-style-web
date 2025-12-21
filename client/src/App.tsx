@@ -28,6 +28,7 @@ import Offers from "@/pages/Offers";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import DeleteAccount from "@/pages/DeleteAccount";
+import Checkout from "@/pages/Checkout";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -54,6 +55,7 @@ function Router() {
       <Route path="/privacy-policy" component={PrivacyPolicy} />
       <Route path="/terms-of-service" component={TermsOfService} />
       <Route path="/delete-account" component={DeleteAccount} />
+      <Route path="/payment/checkout/:paymentId" component={Checkout} />
       <Route component={NotFound} />
     </Switch>
   );
