@@ -27,13 +27,10 @@ export default function Login() {
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert("Login button clicked! Email: " + formData.email);
     setIsLoading(true);
 
     try {
-      console.log("Attempting login with email:", formData.email);
       await loginWithEmail(formData.email, formData.password);
-      console.log("Login successful, redirecting...");
       toast({
         title: getLocalizedText("تم تسجيل الدخول", "Login Successful", "Connexion Réussie"),
       });
