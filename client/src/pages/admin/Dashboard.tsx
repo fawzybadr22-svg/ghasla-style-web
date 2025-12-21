@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useRoute } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Package, ShoppingBag, Users, Gift, FileText, 
   BarChart3, Shield, Settings, ChevronRight, TrendingUp, Pencil, Trash2,
   Plus, Ban, CheckCircle, Download, Eye, X, Save, Camera, ImageIcon,
-  Upload, Loader2
+  Upload, Loader2, Calendar, MapPin, ChevronLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import type { ServicePackage, Order, User, LoyaltyConfig, AuditLog, Offer } from "@shared/schema";
 import { Tag } from "lucide-react";
+import type * as L from "leaflet";
 
 export default function AdminDashboard() {
   const { t, i18n } = useTranslation();
@@ -30,6 +31,12 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   
   const section = params?.section || "dashboard";
+
+  // Date filter state - default to today
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  });
 
   // Package editing state
   const [editingPackage, setEditingPackage] = useState<ServicePackage | null>(null);
@@ -72,10 +79,15 @@ export default function AdminDashboard() {
     enabled: isAdmin && (section === "packages" || section === "dashboard"),
   });
 
-  const { data: orders, isLoading: ordersLoading } = useQuery<Order[]>({
+  const { data: allOrders, isLoading: ordersLoading } = useQuery<Order[]>({
     queryKey: ["/api/admin/orders"],
     enabled: isAdmin && (section === "orders" || section === "dashboard"),
   });
+
+  // Filter orders by selected date (client-side filtering for fast UX)
+  const filteredOrders = allOrders?.filter(order => order.preferredDate === selectedDate) || [];
+  // Dashboard shows all recent orders, Orders page shows filtered by date
+  const orders = section === "orders" ? filteredOrders : allOrders?.slice(0, 10);
 
   const { data: customers, isLoading: customersLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
@@ -643,27 +655,135 @@ export default function AdminDashboard() {
 
             {section === "orders" && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between flex-wrap gap-4">
+                {/* Header with Date Filter */}
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                   <h1 className="text-2xl font-bold">{t("admin.orders")}</h1>
-                  <Button variant="outline" onClick={() => window.open("/api/admin/export/orders", "_blank")}>
-                    <Download className="h-4 w-4 me-2" />
-                    {getLocalizedText("تصدير CSV", "Export CSV", "Exporter CSV")}
-                  </Button>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {/* Date Navigator */}
+                    <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => {
+                          const d = new Date(selectedDate);
+                          d.setDate(d.getDate() - 1);
+                          setSelectedDate(d.toISOString().split("T")[0]);
+                        }}
+                        data-testid="button-prev-day"
+                      >
+                        {i18n.language === "ar" ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <Input
+                          type="date"
+                          value={selectedDate}
+                          onChange={(e) => setSelectedDate(e.target.value)}
+                          className="w-auto min-w-[140px]"
+                          data-testid="input-date-filter"
+                        />
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => {
+                          const d = new Date(selectedDate);
+                          d.setDate(d.getDate() + 1);
+                          setSelectedDate(d.toISOString().split("T")[0]);
+                        }}
+                        data-testid="button-next-day"
+                      >
+                        {i18n.language === "ar" ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setSelectedDate(new Date().toISOString().split("T")[0])}
+                        data-testid="button-today"
+                      >
+                        {getLocalizedText("اليوم", "Today", "Aujourd'hui")}
+                      </Button>
+                    </div>
+                    <Button variant="outline" onClick={() => window.open("/api/admin/export/orders", "_blank")}>
+                      <Download className="h-4 w-4 me-2" />
+                      {getLocalizedText("تصدير CSV", "Export CSV", "Exporter CSV")}
+                    </Button>
+                  </div>
                 </div>
+
+                {/* Summary Stats for Selected Date */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="pt-4 pb-4">
+                      <div className="text-2xl font-bold">{filteredOrders.length}</div>
+                      <p className="text-sm text-muted-foreground">{getLocalizedText("إجمالي الطلبات", "Total Orders", "Total Commandes")}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4 pb-4">
+                      <div className="text-2xl font-bold text-yellow-600">{filteredOrders.filter(o => o.status === "pending").length}</div>
+                      <p className="text-sm text-muted-foreground">{getLocalizedText("قيد الانتظار", "Pending", "En Attente")}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4 pb-4">
+                      <div className="text-2xl font-bold text-blue-600">{filteredOrders.filter(o => ["assigned", "on_the_way", "in_progress"].includes(o.status)).length}</div>
+                      <p className="text-sm text-muted-foreground">{getLocalizedText("قيد التنفيذ", "In Progress", "En Cours")}</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4 pb-4">
+                      <div className="text-2xl font-bold text-green-600">{filteredOrders.filter(o => o.status === "completed").length}</div>
+                      <p className="text-sm text-muted-foreground">{getLocalizedText("مكتمل", "Completed", "Terminé")}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Map showing order locations */}
+                {filteredOrders.some(o => o.latitude && o.longitude) && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <MapPin className="h-5 w-5 text-primary" />
+                        {getLocalizedText("خريطة الطلبات", "Orders Map", "Carte des Commandes")}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <AdminOrdersMap orders={filteredOrders} getLocalizedText={getLocalizedText} getStatusBadge={getStatusBadge} />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Orders List */}
                 <Card>
-                  <CardContent className="pt-6">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">
+                      {getLocalizedText(
+                        `طلبات ${new Date(selectedDate).toLocaleDateString("ar-KW", { weekday: "long", day: "numeric", month: "long" })}`,
+                        `Orders for ${new Date(selectedDate).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}`,
+                        `Commandes du ${new Date(selectedDate).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}`
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
                     {ordersLoading ? (
                       <div className="space-y-2">
                         {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full" />)}
                       </div>
-                    ) : orders?.length ? (
+                    ) : filteredOrders.length ? (
                       <div className="space-y-3">
-                        {orders.map((order) => (
+                        {filteredOrders.map((order) => (
                           <div key={order.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-lg border gap-4" data-testid={`order-row-${order.id}`}>
                             <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 {getStatusBadge(order.status)}
                                 <span className="text-sm text-muted-foreground">#{order.id.slice(0, 8)}</span>
+                                {order.status !== "pending" && (
+                                  <Badge variant="outline" className="text-xs">
+                                    <Users className="h-3 w-3 ltr:mr-1 rtl:ml-1" />
+                                    {getLocalizedText("تم التعيين", "Assigned", "Assigné")}
+                                  </Badge>
+                                )}
                                 {(order.beforePhotoUrl || order.afterPhotoUrl) && (
                                   <Badge variant="secondary" className="text-xs">
                                     <Camera className="h-3 w-3 ltr:mr-1 rtl:ml-1" />
@@ -673,9 +793,8 @@ export default function AdminDashboard() {
                               </div>
                               <p className="font-medium">{order.area} - {order.address}</p>
                               <p className="text-sm text-muted-foreground">
-                                {order.preferredDate} {order.preferredTime}
+                                {order.preferredTime} | {order.carType}
                               </p>
-                              {/* Service Photos Preview */}
                               {(order.beforePhotoUrl || order.afterPhotoUrl) && (
                                 <div className="flex gap-4 mt-2">
                                   {order.beforePhotoUrl && (
@@ -693,7 +812,17 @@ export default function AdminDashboard() {
                                 </div>
                               )}
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              {order.latitude && order.longitude && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${order.latitude},${order.longitude}`, "_blank")}
+                                  data-testid={`button-map-${order.id}`}
+                                >
+                                  <MapPin className="h-4 w-4" />
+                                </Button>
+                              )}
                               <span className="font-bold text-primary">{order.priceKD} KD</span>
                               <Select
                                 value={order.status}
@@ -716,7 +845,16 @@ export default function AdminDashboard() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-muted-foreground text-center py-8">{t("common.noData")}</p>
+                      <div className="text-center py-8">
+                        <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                        <p className="text-muted-foreground">
+                          {getLocalizedText(
+                            "لا توجد طلبات في هذا اليوم",
+                            "No orders for this date",
+                            "Aucune commande pour cette date"
+                          )}
+                        </p>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -2477,5 +2615,130 @@ function OffersManager({
         </Card>
       )}
     </div>
+  );
+}
+
+// Admin Orders Map Component
+function AdminOrdersMap({ 
+  orders, 
+  getLocalizedText, 
+  getStatusBadge 
+}: { 
+  orders: Order[]; 
+  getLocalizedText: (ar: string, en: string, fr: string) => string;
+  getStatusBadge: (status: string) => JSX.Element;
+}) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const leafletMapRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<L.Marker[]>([]);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Load Leaflet CSS
+    if (!document.querySelector('link[href*="leaflet"]')) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(link);
+    }
+
+    // Wait for CSS to load before initializing map
+    const initMap = async () => {
+      const L = await import("leaflet");
+      
+      if (leafletMapRef.current) {
+        // Clear existing markers
+        markersRef.current.forEach(m => m.remove());
+        markersRef.current = [];
+      } else {
+        // Initialize map centered on Kuwait
+        leafletMapRef.current = L.map(mapRef.current!, {
+          center: [29.3759, 47.9774],
+          zoom: 11,
+        });
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; OpenStreetMap contributors',
+        }).addTo(leafletMapRef.current);
+      }
+
+      // Add markers for orders with locations
+      const ordersWithLocation = orders.filter(o => o.latitude && o.longitude);
+      
+      if (ordersWithLocation.length > 0) {
+        const bounds: [number, number][] = [];
+        
+        ordersWithLocation.forEach(order => {
+          if (!order.latitude || !order.longitude) return;
+          
+          const statusColors: Record<string, string> = {
+            pending: "#eab308",
+            assigned: "#3b82f6",
+            on_the_way: "#8b5cf6",
+            in_progress: "#f97316",
+            completed: "#22c55e",
+            cancelled: "#ef4444",
+          };
+          
+          const color = statusColors[order.status] || "#6b7280";
+          
+          // Create custom icon
+          const icon = L.divIcon({
+            className: "custom-marker",
+            html: `<div style="background-color: ${color}; width: 30px; height: 30px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>`,
+            iconSize: [30, 30],
+            iconAnchor: [15, 30],
+            popupAnchor: [0, -30],
+          });
+
+          const marker = L.marker([order.latitude, order.longitude], { icon })
+            .addTo(leafletMapRef.current!)
+            .bindPopup(`
+              <div style="min-width: 180px; direction: rtl; text-align: right;">
+                <strong>#${order.id.slice(0, 8)}</strong><br/>
+                <span style="color: ${color}; font-weight: bold;">${order.status}</span><br/>
+                <span>${order.area}</span><br/>
+                <span>${order.preferredTime}</span><br/>
+                <strong>${order.priceKD} KD</strong>
+              </div>
+            `);
+          
+          markersRef.current.push(marker);
+          bounds.push([order.latitude, order.longitude]);
+        });
+
+        // Fit map to show all markers
+        if (bounds.length > 0) {
+          leafletMapRef.current.fitBounds(bounds as L.LatLngBoundsExpression, { padding: [50, 50] });
+        }
+      }
+    };
+
+    initMap();
+
+    return () => {
+      // Cleanup markers but keep map instance
+      markersRef.current.forEach(m => m.remove());
+      markersRef.current = [];
+    };
+  }, [orders]);
+
+  // Cleanup map on unmount
+  useEffect(() => {
+    return () => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
+      }
+    };
+  }, []);
+
+  return (
+    <div 
+      ref={mapRef} 
+      className="h-[400px] w-full rounded-lg border"
+      data-testid="admin-orders-map"
+    />
   );
 }
