@@ -521,6 +521,43 @@ export async function registerRoutes(
     }
   });
 
+  // Account Deletion Request (GDPR/Google Play compliance)
+  app.post("/api/users/:id/delete-request", async (req, res) => {
+    try {
+      const userId = req.params.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Log the deletion request for audit purposes
+      await storage.createAuditLog({
+        action: "ACCOUNT_DELETION_REQUESTED",
+        userId: userId,
+        targetCollection: "users",
+        targetId: userId,
+        oldValue: { email: user.email, name: user.name },
+        newValue: { status: "deletion_scheduled" },
+      });
+
+      // Mark user as pending deletion (set a flag or deactivate)
+      await storage.updateUser(userId, { 
+        isActive: false,
+        deletionRequestedAt: new Date().toISOString(),
+      });
+
+      res.json({ 
+        success: true, 
+        message: "Account deletion request submitted. Your account will be deleted within 30 days.",
+        scheduledDeletionDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      });
+    } catch (error: any) {
+      console.error("Account deletion request error:", error);
+      res.status(500).json({ error: "Failed to process deletion request" });
+    }
+  });
+
   // Referral code lookup
   app.get("/api/referral/:code", async (req, res) => {
     try {

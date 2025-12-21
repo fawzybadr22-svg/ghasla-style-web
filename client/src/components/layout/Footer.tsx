@@ -173,10 +173,37 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-          <p>
-            © {currentYear} {t("brand")}. {t("footer.rights")}.
-          </p>
+        <div className="mt-8 pt-8 border-t">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">
+              © {currentYear} {t("brand")}. {t("footer.rights")}.
+            </p>
+            <nav className="flex flex-wrap items-center justify-center gap-4 text-sm">
+              <Link
+                href="/privacy-policy"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                data-testid="link-privacy-policy"
+              >
+                {i18n.language === "ar" ? "سياسة الخصوصية" : i18n.language === "fr" ? "Politique de Confidentialité" : "Privacy Policy"}
+              </Link>
+              <span className="text-muted-foreground/50">|</span>
+              <Link
+                href="/terms-of-service"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                data-testid="link-terms-of-service"
+              >
+                {i18n.language === "ar" ? "شروط الاستخدام" : i18n.language === "fr" ? "Conditions d'Utilisation" : "Terms of Service"}
+              </Link>
+              <span className="text-muted-foreground/50">|</span>
+              <Link
+                href="/delete-account"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                data-testid="link-delete-account"
+              >
+                {i18n.language === "ar" ? "حذف الحساب" : i18n.language === "fr" ? "Supprimer le Compte" : "Delete Account"}
+              </Link>
+            </nav>
+          </div>
         </div>
       </div>
 

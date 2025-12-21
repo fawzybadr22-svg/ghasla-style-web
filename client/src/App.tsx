@@ -25,6 +25,9 @@ import DelegateDashboard from "@/pages/delegate/Dashboard";
 import TrackOrder from "@/pages/TrackOrder";
 import Blog from "@/pages/Blog";
 import Offers from "@/pages/Offers";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsOfService from "@/pages/TermsOfService";
+import DeleteAccount from "@/pages/DeleteAccount";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -48,6 +51,9 @@ function Router() {
       <Route path="/admin/:section" component={AdminDashboard} />
       <Route path="/delegate" component={DelegateDashboard} />
       <Route path="/delegate/:section" component={DelegateDashboard} />
+      <Route path="/privacy-policy" component={PrivacyPolicy} />
+      <Route path="/terms-of-service" component={TermsOfService} />
+      <Route path="/delete-account" component={DeleteAccount} />
       <Route component={NotFound} />
     </Switch>
   );
