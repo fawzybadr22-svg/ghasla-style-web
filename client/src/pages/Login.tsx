@@ -27,6 +27,7 @@ export default function Login() {
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    alert("Login button clicked! Email: " + formData.email);
     setIsLoading(true);
 
     try {
