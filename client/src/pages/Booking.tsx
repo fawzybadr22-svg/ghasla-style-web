@@ -138,13 +138,13 @@ export default function Booking() {
   const handleGetLocation = async () => {
     setIsLocating(true);
     
-    // First try browser geolocation
+    // Try browser geolocation with high accuracy
     if (navigator.geolocation) {
       try {
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, {
             enableHighAccuracy: true,
-            timeout: 8000,
+            timeout: 10000,
             maximumAge: 0,
           });
         });
@@ -158,55 +158,45 @@ export default function Booking() {
           setFormData(prev => ({ ...prev, address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}` }));
         }
         setLocationDetected(true);
+        if (fieldErrors.address) setFieldErrors(prev => ({ ...prev, address: undefined }));
         toast({
           title: getLocalizedText("تم تحديد الموقع", "Location Detected", "Emplacement Détecté"),
           description: getLocalizedText(
-            "تم تحديد موقعك تلقائياً",
-            "Your location was detected automatically",
-            "Votre emplacement a été détecté automatiquement"
+            "تم تحديد موقعك الدقيق بنجاح",
+            "Your precise location was detected successfully",
+            "Votre emplacement précis a été détecté avec succès"
           ),
         });
         setIsLocating(false);
         return;
       } catch (geoError: any) {
-        console.log("Browser geolocation failed, trying IP-based fallback...", geoError.code);
+        console.log("Browser geolocation failed:", geoError.code, geoError.message);
+        // If permission denied or failed, open map picker for manual selection
+        setIsLocating(false);
+        setShowMapPicker(true);
+        toast({
+          title: getLocalizedText("تنبيه", "Notice", "Avis"),
+          description: getLocalizedText(
+            "لم نتمكن من تحديد موقعك تلقائياً. حدد موقعك على الخريطة",
+            "Could not detect location automatically. Please select on the map",
+            "Impossible de détecter l'emplacement. Veuillez sélectionner sur la carte"
+          ),
+        });
+        return;
       }
     }
     
-    // Fallback to IP-based location
-    try {
-      const ipLocation = await getIPLocation();
-      if (ipLocation) {
-        const address = await reverseGeocode(ipLocation.lat, ipLocation.lon);
-        if (address) {
-          setFormData(prev => ({ ...prev, address }));
-          setLocationDetected(true);
-          toast({
-            title: getLocalizedText("تم تحديد الموقع التقريبي", "Approximate Location", "Emplacement Approximatif"),
-            description: getLocalizedText(
-              `تم تحديد موقعك التقريبي: ${ipLocation.city}. يرجى تعديل العنوان إذا لزم الأمر`,
-              `Approximate location: ${ipLocation.city}. Please adjust if needed`,
-              `Emplacement approximatif: ${ipLocation.city}. Veuillez ajuster si nécessaire`
-            ),
-          });
-          setIsLocating(false);
-          return;
-        }
-      }
-    } catch {
-      console.log("IP-based location also failed");
-    }
-    
-    // All methods failed
+    // No geolocation support - open map picker
+    setIsLocating(false);
+    setShowMapPicker(true);
     toast({
       title: getLocalizedText("تنبيه", "Notice", "Avis"),
       description: getLocalizedText(
-        "لم نتمكن من تحديد موقعك. يرجى إدخال العنوان يدوياً",
-        "Could not detect your location. Please enter address manually",
-        "Impossible de détecter votre emplacement. Veuillez saisir l'adresse manuellement"
+        "المتصفح لا يدعم تحديد الموقع. حدد موقعك على الخريطة",
+        "Browser doesn't support geolocation. Please select on the map",
+        "Le navigateur ne prend pas en charge la géolocalisation. Sélectionnez sur la carte"
       ),
     });
-    setIsLocating(false);
   };
 
   const getMinTime = () => {
