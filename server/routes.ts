@@ -2386,5 +2386,86 @@ export async function registerRoutes(
     }
   });
 
+  // Reverse geocoding endpoint (proxied through backend for proper headers)
+  app.get("/api/geocode/reverse", async (req, res) => {
+    try {
+      const { lat, lon, lang } = req.query;
+      
+      if (!lat || !lon) {
+        return res.status(400).json({ error: "lat and lon are required" });
+      }
+
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=${lang || 'ar'}`,
+        {
+          headers: {
+            "User-Agent": "GhaslaStyle-CarWash/1.0 (https://ghaslastyle.com)",
+            "Accept": "application/json",
+          },
+        }
+      );
+      
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // IP-based location fallback (for when browser geolocation fails)
+  app.get("/api/geocode/ip-location", async (req, res) => {
+    try {
+      // Use ip-api.com for IP-based location (free, no API key needed)
+      const clientIP = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "";
+      const ip = typeof clientIP === "string" ? clientIP.split(",")[0].trim() : "";
+      
+      // For localhost/private IPs, return Kuwait City as default
+      if (!ip || ip === "127.0.0.1" || ip === "::1" || ip.startsWith("192.168.") || ip.startsWith("10.")) {
+        return res.json({
+          success: true,
+          country: "Kuwait",
+          city: "Kuwait City",
+          lat: 29.3759,
+          lon: 47.9774,
+          isDefault: true,
+        });
+      }
+
+      const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,city,lat,lon`);
+      const data = await response.json();
+      
+      if (data.status === "success") {
+        res.json({
+          success: true,
+          country: data.country,
+          city: data.city,
+          lat: data.lat,
+          lon: data.lon,
+          isDefault: false,
+        });
+      } else {
+        // Fallback to Kuwait City
+        res.json({
+          success: true,
+          country: "Kuwait",
+          city: "Kuwait City",
+          lat: 29.3759,
+          lon: 47.9774,
+          isDefault: true,
+        });
+      }
+    } catch (error: any) {
+      // Fallback to Kuwait City on error
+      res.json({
+        success: true,
+        country: "Kuwait",
+        city: "Kuwait City",
+        lat: 29.3759,
+        lon: 47.9774,
+        isDefault: true,
+      });
+    }
+  });
+
   return httpServer;
 }

@@ -103,81 +103,108 @@ export default function Booking() {
     return i18n.language === "ar" ? ar : i18n.language === "fr" ? fr : en;
   };
 
-  const handleGetLocation = async () => {
-    if (!navigator.geolocation) {
-      toast({
-        title: getLocalizedText("خطأ", "Error", "Erreur"),
-        description: getLocalizedText(
-          "المتصفح لا يدعم تحديد الموقع",
-          "Browser doesn't support geolocation",
-          "Le navigateur ne prend pas en charge la géolocalisation"
-        ),
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLocating(true);
+  // Helper function to get address from coordinates using backend proxy
+  const reverseGeocode = async (lat: number, lon: number): Promise<string | null> => {
     try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        });
-      });
+      const response = await fetch(
+        `/api/geocode/reverse?lat=${lat}&lon=${lon}&lang=${i18n.language}`
+      );
+      const data = await response.json();
+      if (data.display_name) {
+        return data.display_name.split(",").slice(0, 3).join(",");
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
 
-      const { latitude, longitude } = position.coords;
-      
+  // Try IP-based location as fallback
+  const getIPLocation = async (): Promise<{ lat: number; lon: number; city: string } | null> => {
+    try {
+      const response = await fetch("/api/geocode/ip-location");
+      const data = await response.json();
+      if (data.success) {
+        return { lat: data.lat, lon: data.lon, city: data.city };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const handleGetLocation = async () => {
+    setIsLocating(true);
+    
+    // First try browser geolocation
+    if (navigator.geolocation) {
       try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=${i18n.language}`
-        );
-        const data = await response.json();
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 8000,
+            maximumAge: 0,
+          });
+        });
+
+        const { latitude, longitude } = position.coords;
+        const address = await reverseGeocode(latitude, longitude);
         
-        if (data.display_name) {
-          setFormData(prev => ({
-            ...prev,
-            address: data.display_name.split(",").slice(0, 3).join(","),
-          }));
+        if (address) {
+          setFormData(prev => ({ ...prev, address }));
+        } else {
+          setFormData(prev => ({ ...prev, address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}` }));
+        }
+        setLocationDetected(true);
+        toast({
+          title: getLocalizedText("تم تحديد الموقع", "Location Detected", "Emplacement Détecté"),
+          description: getLocalizedText(
+            "تم تحديد موقعك تلقائياً",
+            "Your location was detected automatically",
+            "Votre emplacement a été détecté automatiquement"
+          ),
+        });
+        setIsLocating(false);
+        return;
+      } catch (geoError: any) {
+        console.log("Browser geolocation failed, trying IP-based fallback...", geoError.code);
+      }
+    }
+    
+    // Fallback to IP-based location
+    try {
+      const ipLocation = await getIPLocation();
+      if (ipLocation) {
+        const address = await reverseGeocode(ipLocation.lat, ipLocation.lon);
+        if (address) {
+          setFormData(prev => ({ ...prev, address }));
           setLocationDetected(true);
           toast({
-            title: getLocalizedText("تم تحديد الموقع", "Location Detected", "Emplacement Détecté"),
+            title: getLocalizedText("تم تحديد الموقع التقريبي", "Approximate Location", "Emplacement Approximatif"),
             description: getLocalizedText(
-              "تم تحديد موقعك تلقائياً",
-              "Your location was detected automatically",
-              "Votre emplacement a été détecté automatiquement"
+              `تم تحديد موقعك التقريبي: ${ipLocation.city}. يرجى تعديل العنوان إذا لزم الأمر`,
+              `Approximate location: ${ipLocation.city}. Please adjust if needed`,
+              `Emplacement approximatif: ${ipLocation.city}. Veuillez ajuster si nécessaire`
             ),
           });
+          setIsLocating(false);
+          return;
         }
-      } catch {
-        setFormData(prev => ({
-          ...prev,
-          address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-        }));
-        setLocationDetected(true);
       }
-    } catch (error: any) {
-      let message = getLocalizedText(
-        "فشل تحديد الموقع. يرجى إدخال العنوان يدوياً",
-        "Failed to get location. Please enter address manually",
-        "Échec de la géolocalisation. Veuillez saisir l'adresse manuellement"
-      );
-      if (error.code === 1) {
-        message = getLocalizedText(
-          "تم رفض إذن الموقع",
-          "Location permission denied",
-          "Permission de localisation refusée"
-        );
-      }
-      toast({
-        title: getLocalizedText("خطأ", "Error", "Erreur"),
-        description: message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLocating(false);
+    } catch {
+      console.log("IP-based location also failed");
     }
+    
+    // All methods failed
+    toast({
+      title: getLocalizedText("تنبيه", "Notice", "Avis"),
+      description: getLocalizedText(
+        "لم نتمكن من تحديد موقعك. يرجى إدخال العنوان يدوياً",
+        "Could not detect your location. Please enter address manually",
+        "Impossible de détecter votre emplacement. Veuillez saisir l'adresse manuellement"
+      ),
+    });
+    setIsLocating(false);
   };
 
   const getMinTime = () => {
