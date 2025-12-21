@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Car, Sparkles, MapPin, CreditCard, Check, ChevronRight, ChevronLeft, Loader2, Navigation, Calendar, Clock } from "lucide-react";
+import { Car, Sparkles, MapPin, CreditCard, Check, ChevronRight, ChevronLeft, Loader2, Navigation, Calendar, Clock, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
+import { MapPicker } from "@/components/ui/map-picker";
 import type { ServicePackage, ServiceArea } from "@shared/schema";
 
 const defaultPackages: ServicePackage[] = [
@@ -35,6 +36,7 @@ export default function Booking() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [locationDetected, setLocationDetected] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{
     area?: string;
     address?: string;
@@ -622,10 +624,20 @@ export default function Booking() {
                       type="button"
                       variant="outline"
                       size="icon"
+                      onClick={() => setShowMapPicker(true)}
+                      data-testid="button-open-map"
+                      title={getLocalizedText("اختر الموقع من الخريطة", "Select location from map", "Sélectionner l'emplacement sur la carte")}
+                    >
+                      <Map className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
                       onClick={handleGetLocation}
                       disabled={isLocating}
                       data-testid="button-get-location"
-                      title={getLocalizedText("تحديد الموقع تلقائياً (اختياري)", "Auto-detect location (optional)", "Détecter l'emplacement (optionnel)")}
+                      title={getLocalizedText("تحديد الموقع تلقائياً", "Auto-detect location", "Détecter l'emplacement automatiquement")}
                     >
                       {isLocating ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -813,6 +825,28 @@ export default function Booking() {
           )}
         </div>
       </div>
+
+      {/* Map Picker Modal */}
+      {showMapPicker && (
+        <MapPicker
+          language={i18n.language}
+          onLocationSelect={(lat, lng, address) => {
+            setFormData(prev => ({ ...prev, address }));
+            setLocationDetected(true);
+            setShowMapPicker(false);
+            if (fieldErrors.address) setFieldErrors(prev => ({ ...prev, address: undefined }));
+            toast({
+              title: getLocalizedText("تم تحديد الموقع", "Location Selected", "Emplacement Sélectionné"),
+              description: getLocalizedText(
+                "تم تحديد موقعك بنجاح",
+                "Your location has been set successfully",
+                "Votre emplacement a été défini avec succès"
+              ),
+            });
+          }}
+          onClose={() => setShowMapPicker(false)}
+        />
+      )}
     </div>
   );
 }
