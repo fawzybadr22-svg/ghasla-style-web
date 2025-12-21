@@ -83,7 +83,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithEmail = async (email: string, password: string) => {
     try {
-      await signInWithEmail(email, password);
+      console.log("AuthContext: Starting email login for:", email);
+      const result = await signInWithEmail(email, password);
+      console.log("AuthContext: Firebase signIn successful, user:", result.user?.uid);
+      // Fetch user data from our backend
+      if (result.user) {
+        const response = await fetch(`/api/users/${result.user.uid}`);
+        console.log("AuthContext: User fetch response status:", response.status);
+        if (response.ok) {
+          const userData = await response.json();
+          console.log("AuthContext: User data fetched:", userData?.email);
+          setUser(userData);
+        }
+      }
     } catch (error: any) {
       console.error("Email login error:", error);
       if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password" || error.code === "auth/user-not-found") {

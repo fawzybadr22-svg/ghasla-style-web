@@ -30,12 +30,15 @@ export default function Login() {
     setIsLoading(true);
 
     try {
+      console.log("Attempting login with email:", formData.email);
       await loginWithEmail(formData.email, formData.password);
+      console.log("Login successful, redirecting...");
       toast({
         title: getLocalizedText("تم تسجيل الدخول", "Login Successful", "Connexion Réussie"),
       });
       setLocation("/");
     } catch (error: any) {
+      console.error("Login error:", error);
       toast({
         title: t("common.error"),
         description: error.message || getLocalizedText(
