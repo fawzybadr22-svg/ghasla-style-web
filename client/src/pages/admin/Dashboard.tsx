@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useRoute } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -37,6 +37,8 @@ export default function AdminDashboard() {
     const today = new Date();
     return today.toISOString().split("T")[0];
   });
+  // Filter mode: daily, weekly, monthly, all
+  const [filterMode, setFilterMode] = useState<"daily" | "weekly" | "monthly" | "all">("daily");
 
   // Package editing state
   const [editingPackage, setEditingPackage] = useState<ServicePackage | null>(null);
@@ -84,8 +86,45 @@ export default function AdminDashboard() {
     enabled: isAdmin && (section === "orders" || section === "dashboard"),
   });
 
-  // Filter orders by selected date (client-side filtering for fast UX)
-  const filteredOrders = allOrders?.filter(order => order.preferredDate === selectedDate) || [];
+  // Filter orders based on filter mode (client-side filtering for fast UX)
+  const filteredOrders = useMemo(() => {
+    if (!allOrders) return [];
+    if (filterMode === "all") return allOrders;
+    
+    const selectedDateObj = new Date(selectedDate);
+    
+    if (filterMode === "daily") {
+      return allOrders.filter(order => order.preferredDate === selectedDate);
+    }
+    
+    if (filterMode === "weekly") {
+      // Get start of week (Sunday)
+      const startOfWeek = new Date(selectedDateObj);
+      startOfWeek.setDate(selectedDateObj.getDate() - selectedDateObj.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      // Get end of week (Saturday)
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+      
+      return allOrders.filter(order => {
+        const orderDate = new Date(order.preferredDate);
+        return orderDate >= startOfWeek && orderDate <= endOfWeek;
+      });
+    }
+    
+    if (filterMode === "monthly") {
+      const year = selectedDateObj.getFullYear();
+      const month = selectedDateObj.getMonth();
+      return allOrders.filter(order => {
+        const orderDate = new Date(order.preferredDate);
+        return orderDate.getFullYear() === year && orderDate.getMonth() === month;
+      });
+    }
+    
+    return allOrders;
+  }, [allOrders, filterMode, selectedDate]);
+  
   // Dashboard shows all recent orders, Orders page shows filtered by date
   const orders = section === "orders" ? filteredOrders : allOrders?.slice(0, 10);
 
@@ -656,58 +695,113 @@ export default function AdminDashboard() {
             {section === "orders" && (
               <div className="space-y-6">
                 {/* Header with Date Filter */}
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                  <h1 className="text-2xl font-bold">{t("admin.orders")}</h1>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    {/* Date Navigator */}
-                    <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => {
-                          const d = new Date(selectedDate);
-                          d.setDate(d.getDate() - 1);
-                          setSelectedDate(d.toISOString().split("T")[0]);
-                        }}
-                        data-testid="button-prev-day"
-                      >
-                        {i18n.language === "ar" ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-                      </Button>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <Input
-                          type="date"
-                          value={selectedDate}
-                          onChange={(e) => setSelectedDate(e.target.value)}
-                          className="w-auto min-w-[140px]"
-                          data-testid="input-date-filter"
-                        />
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => {
-                          const d = new Date(selectedDate);
-                          d.setDate(d.getDate() + 1);
-                          setSelectedDate(d.toISOString().split("T")[0]);
-                        }}
-                        data-testid="button-next-day"
-                      >
-                        {i18n.language === "ar" ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setSelectedDate(new Date().toISOString().split("T")[0])}
-                        data-testid="button-today"
-                      >
-                        {getLocalizedText("اليوم", "Today", "Aujourd'hui")}
-                      </Button>
-                    </div>
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <h1 className="text-2xl font-bold">{t("admin.orders")}</h1>
                     <Button variant="outline" onClick={() => window.open("/api/admin/export/orders", "_blank")}>
                       <Download className="h-4 w-4 me-2" />
                       {getLocalizedText("تصدير CSV", "Export CSV", "Exporter CSV")}
                     </Button>
+                  </div>
+                  
+                  {/* Filter Mode Tabs */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex bg-muted/50 rounded-lg p-1 gap-1">
+                      <Button 
+                        variant={filterMode === "daily" ? "default" : "ghost"} 
+                        size="sm"
+                        onClick={() => setFilterMode("daily")}
+                        data-testid="button-filter-daily"
+                      >
+                        {getLocalizedText("يومي", "Daily", "Quotidien")}
+                      </Button>
+                      <Button 
+                        variant={filterMode === "weekly" ? "default" : "ghost"} 
+                        size="sm"
+                        onClick={() => setFilterMode("weekly")}
+                        data-testid="button-filter-weekly"
+                      >
+                        {getLocalizedText("أسبوعي", "Weekly", "Hebdomadaire")}
+                      </Button>
+                      <Button 
+                        variant={filterMode === "monthly" ? "default" : "ghost"} 
+                        size="sm"
+                        onClick={() => setFilterMode("monthly")}
+                        data-testid="button-filter-monthly"
+                      >
+                        {getLocalizedText("شهري", "Monthly", "Mensuel")}
+                      </Button>
+                      <Button 
+                        variant={filterMode === "all" ? "default" : "ghost"} 
+                        size="sm"
+                        onClick={() => setFilterMode("all")}
+                        data-testid="button-filter-all"
+                      >
+                        {getLocalizedText("الكل", "All", "Tout")}
+                      </Button>
+                    </div>
+                    
+                    {/* Date Navigator - hidden when "all" is selected */}
+                    {filterMode !== "all" && (
+                      <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => {
+                            const d = new Date(selectedDate);
+                            if (filterMode === "daily") d.setDate(d.getDate() - 1);
+                            else if (filterMode === "weekly") d.setDate(d.getDate() - 7);
+                            else if (filterMode === "monthly") d.setMonth(d.getMonth() - 1);
+                            setSelectedDate(d.toISOString().split("T")[0]);
+                          }}
+                          data-testid="button-prev-period"
+                        >
+                          {i18n.language === "ar" ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          {filterMode === "monthly" ? (
+                            <Input
+                              type="month"
+                              value={selectedDate.slice(0, 7)}
+                              onChange={(e) => setSelectedDate(e.target.value + "-01")}
+                              className="w-auto min-w-[140px]"
+                              data-testid="input-month-filter"
+                            />
+                          ) : (
+                            <Input
+                              type="date"
+                              value={selectedDate}
+                              onChange={(e) => setSelectedDate(e.target.value)}
+                              className="w-auto min-w-[140px]"
+                              data-testid="input-date-filter"
+                            />
+                          )}
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => {
+                            const d = new Date(selectedDate);
+                            if (filterMode === "daily") d.setDate(d.getDate() + 1);
+                            else if (filterMode === "weekly") d.setDate(d.getDate() + 7);
+                            else if (filterMode === "monthly") d.setMonth(d.getMonth() + 1);
+                            setSelectedDate(d.toISOString().split("T")[0]);
+                          }}
+                          data-testid="button-next-period"
+                        >
+                          {i18n.language === "ar" ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setSelectedDate(new Date().toISOString().split("T")[0])}
+                          data-testid="button-today"
+                        >
+                          {getLocalizedText("اليوم", "Today", "Aujourd'hui")}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -758,10 +852,33 @@ export default function AdminDashboard() {
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">
-                      {getLocalizedText(
-                        `طلبات ${new Date(selectedDate).toLocaleDateString("ar-KW", { weekday: "long", day: "numeric", month: "long" })}`,
-                        `Orders for ${new Date(selectedDate).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}`,
-                        `Commandes du ${new Date(selectedDate).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}`
+                      {filterMode === "all" ? (
+                        getLocalizedText("جميع الطلبات", "All Orders", "Toutes les Commandes")
+                      ) : filterMode === "monthly" ? (
+                        getLocalizedText(
+                          `طلبات ${new Date(selectedDate).toLocaleDateString("ar-KW", { month: "long", year: "numeric" })}`,
+                          `Orders for ${new Date(selectedDate).toLocaleDateString("en-US", { month: "long", year: "numeric" })}`,
+                          `Commandes de ${new Date(selectedDate).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}`
+                        )
+                      ) : filterMode === "weekly" ? (
+                        (() => {
+                          const d = new Date(selectedDate);
+                          const startOfWeek = new Date(d);
+                          startOfWeek.setDate(d.getDate() - d.getDay());
+                          const endOfWeek = new Date(startOfWeek);
+                          endOfWeek.setDate(startOfWeek.getDate() + 6);
+                          return getLocalizedText(
+                            `طلبات الأسبوع (${startOfWeek.toLocaleDateString("ar-KW", { day: "numeric", month: "short" })} - ${endOfWeek.toLocaleDateString("ar-KW", { day: "numeric", month: "short" })})`,
+                            `Orders for Week (${startOfWeek.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${endOfWeek.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`,
+                            `Commandes de la Semaine (${startOfWeek.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} - ${endOfWeek.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })})`
+                          );
+                        })()
+                      ) : (
+                        getLocalizedText(
+                          `طلبات ${new Date(selectedDate).toLocaleDateString("ar-KW", { weekday: "long", day: "numeric", month: "long" })}`,
+                          `Orders for ${new Date(selectedDate).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}`,
+                          `Commandes du ${new Date(selectedDate).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}`
+                        )
                       )}
                     </CardTitle>
                   </CardHeader>
