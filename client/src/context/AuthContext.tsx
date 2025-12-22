@@ -5,6 +5,7 @@ import type { User } from "@shared/schema";
 interface FirebaseClaims {
   superAdmin: boolean;
   admin: boolean;
+  delegate: boolean;
 }
 
 interface AuthContextType {
@@ -17,6 +18,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  isDelegate: boolean;
   firebaseClaims: FirebaseClaims;
 }
 
@@ -26,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [firebaseClaims, setFirebaseClaims] = useState<FirebaseClaims>({ superAdmin: false, admin: false });
+  const [firebaseClaims, setFirebaseClaims] = useState<FirebaseClaims>({ superAdmin: false, admin: false, delegate: false });
 
   useEffect(() => {
     const unsubscribe = onAuthChange(async (fbUser) => {
@@ -46,11 +48,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error) {
           console.error("Error fetching user:", error);
           setUser(null);
-          setFirebaseClaims({ superAdmin: false, admin: false });
+          setFirebaseClaims({ superAdmin: false, admin: false, delegate: false });
         }
       } else {
         setUser(null);
-        setFirebaseClaims({ superAdmin: false, admin: false });
+        setFirebaseClaims({ superAdmin: false, admin: false, delegate: false });
       }
       setLoading(false);
     });
@@ -152,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAdmin = user?.role === "admin" || user?.role === "super_admin" || firebaseClaims.admin;
   const isSuperAdmin = user?.role === "super_admin" || firebaseClaims.superAdmin;
+  const isDelegate = user?.role === "delegate" || firebaseClaims.delegate;
 
   return (
     <AuthContext.Provider
@@ -165,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         isAdmin,
         isSuperAdmin,
+        isDelegate,
         firebaseClaims,
       }}
     >

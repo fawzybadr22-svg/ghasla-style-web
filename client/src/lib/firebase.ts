@@ -54,16 +54,18 @@ export const getTokenResult = async (user: FirebaseUser): Promise<IdTokenResult>
 export const getAuthClaims = async (user: FirebaseUser): Promise<{ 
   superAdmin: boolean; 
   admin: boolean;
+  delegate: boolean;
 }> => {
   try {
     const tokenResult = await getIdTokenResult(user, true);
     return {
       superAdmin: tokenResult.claims.superAdmin === true,
       admin: tokenResult.claims.admin === true || tokenResult.claims.superAdmin === true,
+      delegate: tokenResult.claims.delegate === true,
     };
   } catch (error) {
     console.error("Error getting auth claims:", error);
-    return { superAdmin: false, admin: false };
+    return { superAdmin: false, admin: false, delegate: false };
   }
 };
 

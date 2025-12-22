@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
-import { Menu, X, Moon, Sun, User, LogOut, Settings } from "lucide-react";
+import { Menu, X, Moon, Sun, User, LogOut, Settings, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import {
@@ -18,7 +18,7 @@ export function Header() {
   const { t, i18n } = useTranslation();
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, isDelegate } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   const isRTL = i18n.language === "ar";
@@ -109,6 +109,14 @@ export function Header() {
                       {t("nav.account")}
                     </Link>
                   </DropdownMenuItem>
+                  {isDelegate && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/delegate" className="flex items-center gap-2 w-full">
+                        <Truck className="h-4 w-4" />
+                        {t("nav.delegate", "بوابة المندوب")}
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   {isAdmin && (
                     <DropdownMenuItem asChild>
                       <Link href="/admin" className="flex items-center gap-2 w-full">

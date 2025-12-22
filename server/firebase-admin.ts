@@ -233,4 +233,24 @@ export async function setAdminRole(email: string, isAdmin: boolean): Promise<{ u
   }
 }
 
+export async function setDelegateRole(email: string, isDelegate: boolean): Promise<{ uid: string; success: boolean }> {
+  try {
+    const firebaseAdmin = getFirebaseAdmin();
+    const user = await firebaseAdmin.auth().getUserByEmail(email);
+    
+    const existingClaims = user.customClaims || {};
+    
+    await firebaseAdmin.auth().setCustomUserClaims(user.uid, {
+      ...existingClaims,
+      delegate: isDelegate,
+    });
+    
+    console.log(`Set delegate=${isDelegate} for ${email} (uid: ${user.uid})`);
+    return { uid: user.uid, success: true };
+  } catch (error) {
+    console.error("setDelegateRole error:", error);
+    throw error;
+  }
+}
+
 export { admin };

@@ -13,6 +13,7 @@ import {
 import { 
   setSuperAdmin, 
   setAdminRole, 
+  setDelegateRole,
   requireSuperAdmin, 
   requireAdmin,
   type AuthenticatedRequest 
@@ -226,6 +227,32 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error("set-admin error:", err);
       return res.status(500).json({ error: err.message || "failed to set admin role" });
+    }
+  });
+
+  app.post("/internal/set-delegate", verifySuperAdminSecret, async (req, res) => {
+    const { email, isDelegate } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "email is required" });
+    }
+
+    try {
+      const result = await setDelegateRole(email, isDelegate !== false);
+      
+      const user = await storage.getUserByEmail(email);
+      if (user) {
+        await storage.updateUser(user.id, { role: isDelegate !== false ? "delegate" : "customer" });
+      }
+      
+      return res.json({ 
+        ok: true, 
+        uid: result.uid, 
+        delegate: isDelegate !== false,
+        message: `Delegate role ${isDelegate !== false ? "granted" : "revoked"} for ${email}` 
+      });
+    } catch (err: any) {
+      console.error("set-delegate error:", err);
+      return res.status(500).json({ error: err.message || "failed to set delegate role" });
     }
   });
 
