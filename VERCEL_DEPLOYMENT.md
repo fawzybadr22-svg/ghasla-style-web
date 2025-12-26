@@ -28,6 +28,21 @@ Set these environment variables in Vercel Dashboard > Project Settings > Environ
 ### Security
 - `ALLOWED_ORIGINS` - Comma-separated list of allowed origins (e.g., `https://yourdomain.com,https://www.yourdomain.com`)
 
+## Package.json Setup (IMPORTANT)
+
+Before deploying, you must manually add these to your package.json:
+
+```json
+{
+  "scripts": {
+    "build:vercel": "vite build"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  }
+}
+```
+
 ## Deployment Steps
 
 1. **Push to Repository**
@@ -41,7 +56,7 @@ Set these environment variables in Vercel Dashboard > Project Settings > Environ
    - Go to [vercel.com/new](https://vercel.com/new)
    - Import your repository
    - Framework: Vite
-   - Build Command: `npx vite build`
+   - Build Command: `npm run build:vercel`
    - Output Directory: `dist/public`
 
 3. **Configure Environment Variables**
@@ -58,17 +73,28 @@ Set these environment variables in Vercel Dashboard > Project Settings > Environ
 After deployment, run this curl command to set up the super admin:
 
 ```bash
-curl -X POST https://your-vercel-domain.vercel.app/internal/make-super-admin \
+curl -X POST https://YOUR_DOMAIN.vercel.app/api/internal/make-super-admin \
   -H "Content-Type: application/json" \
   -H "X-Super-Admin-Secret: YOUR_SUPER_ADMIN_SECRET" \
   -d '{"email": "fawzybadr22@gmail.com"}'
+```
+
+### Test API Health
+```bash
+curl https://YOUR_DOMAIN.vercel.app/api/health
+```
+
+Expected response:
+```json
+{"status":"ok","timestamp":"2025-01-01T00:00:00.000Z"}
 ```
 
 ## Project Structure
 
 ```
 api/
-├── index.ts          # Vercel serverless function entry point
+├── index.ts          # Express app (Vercel serverless entry)
+├── [...path].ts      # Catch-all handler for /api/*
 └── lib/
     ├── db.ts         # Database connection
     ├── firebaseAdmin.ts  # Firebase Admin SDK
@@ -79,12 +105,23 @@ dist/public/          # Vite build output (static files)
 vercel.json           # Vercel configuration
 ```
 
+## API Routes
+
+All API routes are under `/api/*`:
+- `GET /api/health` - Health check
+- `GET /api/packages` - Service packages
+- `GET /api/areas` - Kuwait service areas
+- `POST /api/internal/make-super-admin` - Setup super admin
+- `POST /api/internal/set-admin` - Set admin role
+- `POST /api/internal/set-delegate` - Set delegate role
+
 ## Important Notes
 
 1. **Database**: The production PostgreSQL URL should be different from development
 2. **CORS**: Make sure to add your production domain to `ALLOWED_ORIGINS`
 3. **Firebase Rules**: Deploy Firebase security rules before production
 4. **Monitoring**: Set up Vercel Analytics for performance monitoring
+5. **Node Version**: Requires Node.js >= 20.11.0 for `import.meta.dirname` support
 
 ## Troubleshooting
 
@@ -100,3 +137,7 @@ vercel.json           # Vercel configuration
 ### Firebase Authentication fails
 - Verify all VITE_FIREBASE_* variables are set correctly
 - Check that FIREBASE_SERVICE_ACCOUNT JSON is valid
+
+### Build fails with import.meta.dirname error
+- Ensure `engines.node` is set to `>=20.11.0` in package.json
+- Vercel should use Node 20+ automatically
