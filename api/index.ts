@@ -568,7 +568,7 @@ app.patch("/api/orders/:id", async (req, res) => {
 });
 
 // Admin Routes
-app.get("/api/admin/orders", requireAdmin, async (req: AuthenticatedRequest, res) => {
+app.get("/api/admin/orders", requireAdmin as any, async (req: Request, res) => {
   try {
     const { status, startDate, endDate } = req.query;
     const filters: any = {};
@@ -583,7 +583,7 @@ app.get("/api/admin/orders", requireAdmin, async (req: AuthenticatedRequest, res
   }
 });
 
-app.get("/api/admin/users", requireAdmin, async (req: AuthenticatedRequest, res) => {
+app.get("/api/admin/users", requireAdmin as any, async (req: Request, res) => {
   try {
     const { role, status } = req.query;
     const filters: any = {};
@@ -597,7 +597,7 @@ app.get("/api/admin/users", requireAdmin, async (req: AuthenticatedRequest, res)
   }
 });
 
-app.get("/api/admin/packages", requireAdmin, async (req: AuthenticatedRequest, res) => {
+app.get("/api/admin/packages", requireAdmin as any, async (req: Request, res) => {
   try {
     const packages = await storage.getServicePackages();
     res.json(packages);
@@ -606,7 +606,7 @@ app.get("/api/admin/packages", requireAdmin, async (req: AuthenticatedRequest, r
   }
 });
 
-app.post("/api/admin/packages", requireAdmin, async (req: AuthenticatedRequest, res) => {
+app.post("/api/admin/packages", requireAdmin as any, async (req: Request, res) => {
   try {
     const data = insertServicePackageSchema.parse(req.body);
     const pkg = await storage.createServicePackage(data);
@@ -616,7 +616,7 @@ app.post("/api/admin/packages", requireAdmin, async (req: AuthenticatedRequest, 
   }
 });
 
-app.patch("/api/admin/packages/:id", requireAdmin, async (req: AuthenticatedRequest, res) => {
+app.patch("/api/admin/packages/:id", requireAdmin as any, async (req: Request, res) => {
   try {
     const updated = await storage.updateServicePackage(req.params.id, req.body);
     if (!updated) {
@@ -628,7 +628,7 @@ app.patch("/api/admin/packages/:id", requireAdmin, async (req: AuthenticatedRequ
   }
 });
 
-app.delete("/api/admin/packages/:id", requireAdmin, async (req: AuthenticatedRequest, res) => {
+app.delete("/api/admin/packages/:id", requireAdmin as any, async (req: Request, res) => {
   try {
     await storage.deleteServicePackage(req.params.id);
     res.json({ success: true });
@@ -637,7 +637,7 @@ app.delete("/api/admin/packages/:id", requireAdmin, async (req: AuthenticatedReq
   }
 });
 
-app.get("/api/admin/loyalty", requireAdmin, async (req: AuthenticatedRequest, res) => {
+app.get("/api/admin/loyalty", requireAdmin as any, async (req: Request, res) => {
   try {
     const config = await storage.getLoyaltyConfig();
     res.json(config);
@@ -646,7 +646,7 @@ app.get("/api/admin/loyalty", requireAdmin, async (req: AuthenticatedRequest, re
   }
 });
 
-app.patch("/api/admin/loyalty", requireAdmin, async (req: AuthenticatedRequest, res) => {
+app.patch("/api/admin/loyalty", requireAdmin as any, async (req: Request, res) => {
   try {
     const updated = await storage.updateLoyaltyConfig(req.body);
     res.json(updated);
@@ -656,9 +656,9 @@ app.patch("/api/admin/loyalty", requireAdmin, async (req: AuthenticatedRequest, 
 });
 
 // Delegate Routes
-app.get("/api/delegate/orders", requireDelegate, async (req: AuthenticatedRequest, res) => {
+app.get("/api/delegate/orders", requireDelegate as any, async (req: Request, res) => {
   try {
-    const delegateId = req.user?.uid;
+    const delegateId = (req as any).user?.uid;
     if (!delegateId) {
       return res.status(401).json({ error: "Unauthorized" });
     }
@@ -679,7 +679,7 @@ app.get("/api/delegate/orders", requireDelegate, async (req: AuthenticatedReques
   }
 });
 
-app.get("/api/delegate/available", requireDelegate, async (req: AuthenticatedRequest, res) => {
+app.get("/api/delegate/available", requireDelegate as any, async (req: Request, res) => {
   try {
     const orders = await storage.getOrders({ status: "pending" });
     res.json(orders);
@@ -688,9 +688,9 @@ app.get("/api/delegate/available", requireDelegate, async (req: AuthenticatedReq
   }
 });
 
-app.post("/api/delegate/orders/:id/accept", requireDelegate, async (req: AuthenticatedRequest, res) => {
+app.post("/api/delegate/orders/:id/accept", requireDelegate as any, async (req: Request, res) => {
   try {
-    const delegateId = req.user?.uid;
+    const delegateId = (req as any).user?.uid;
     if (!delegateId) {
       return res.status(401).json({ error: "Unauthorized" });
     }
@@ -716,7 +716,7 @@ app.post("/api/delegate/orders/:id/accept", requireDelegate, async (req: Authent
   }
 });
 
-app.post("/api/delegate/orders/:id/status", requireDelegate, async (req: AuthenticatedRequest, res) => {
+app.post("/api/delegate/orders/:id/status", requireDelegate as any, async (req: Request, res) => {
   try {
     const { status } = req.body;
     const order = await storage.getOrder(req.params.id);

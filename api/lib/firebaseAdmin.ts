@@ -51,6 +51,12 @@ export interface AuthenticatedRequest extends Request {
   user?: admin.auth.DecodedIdToken;
 }
 
+export type RequestHandlerWithAuth = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => Promise<void | Response<any, Record<string, any>>> | void;
+
 export async function requireSuperAdmin(
   req: AuthenticatedRequest,
   res: Response,

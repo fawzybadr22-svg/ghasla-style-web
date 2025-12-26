@@ -1,35 +1,16 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/index.ts",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+  "buildCommand": "npm run build:vercel",
+  "outputDirectory": "dist/public",
+  "framework": "vite",
+  "functions": {
+    "api/index.ts": {
+      "runtime": "@vercel/node@3"
     }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/index.ts"
-    },
-    {
-      "src": "/internal/(.*)",
-      "dest": "/api/index.ts"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ],
+  },
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/:path*" },
-    { "source": "/internal/:path*", "destination": "/api/:path*" },
+    { "source": "/api/:path*", "destination": "/api/index.ts" },
+    { "source": "/internal/:path*", "destination": "/api/index.ts" },
     { "source": "/((?!api/|internal/).*)", "destination": "/index.html" }
   ]
 }
