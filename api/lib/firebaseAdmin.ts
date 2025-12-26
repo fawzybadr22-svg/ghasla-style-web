@@ -1,5 +1,13 @@
 import admin from "firebase-admin";
-import type { Request, Response, NextFunction } from "express";
+import type { Request, Response, NextFunction, RequestHandler } from "express";
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: admin.auth.DecodedIdToken;
+    }
+  }
+}
 
 let initialized = false;
 
@@ -51,17 +59,11 @@ export interface AuthenticatedRequest extends Request {
   user?: admin.auth.DecodedIdToken;
 }
 
-export type RequestHandlerWithAuth = (
-  req: AuthenticatedRequest,
+export const requireSuperAdmin: RequestHandler = async (
+  req: Request,
   res: Response,
   next: NextFunction
-) => Promise<void | Response<any, Record<string, any>>> | void;
-
-export async function requireSuperAdmin(
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-) {
+) => {
   try {
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") 
@@ -87,11 +89,11 @@ export async function requireSuperAdmin(
   }
 }
 
-export async function requireAdmin(
-  req: AuthenticatedRequest,
+export const requireAdmin: RequestHandler = async (
+  req: Request,
   res: Response,
   next: NextFunction
-) {
+) => {
   try {
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") 
@@ -117,11 +119,11 @@ export async function requireAdmin(
   }
 }
 
-export async function requireDelegate(
-  req: AuthenticatedRequest,
+export const requireDelegate: RequestHandler = async (
+  req: Request,
   res: Response,
   next: NextFunction
-) {
+) => {
   try {
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") 
@@ -147,11 +149,11 @@ export async function requireDelegate(
   }
 }
 
-export async function requireAuth(
-  req: AuthenticatedRequest,
+export const requireAuth: RequestHandler = async (
+  req: Request,
   res: Response,
   next: NextFunction
-) {
+) => {
   try {
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") 

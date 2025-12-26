@@ -41,7 +41,7 @@ Set these environment variables in Vercel Dashboard > Project Settings > Environ
    - Go to [vercel.com/new](https://vercel.com/new)
    - Import your repository
    - Framework: Vite
-   - Build Command: `npm run build:vercel`
+   - Build Command: `npx vite build`
    - Output Directory: `dist/public`
 
 3. **Configure Environment Variables**
