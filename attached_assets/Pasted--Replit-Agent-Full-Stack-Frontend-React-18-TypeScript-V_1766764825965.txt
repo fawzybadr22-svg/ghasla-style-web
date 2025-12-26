@@ -1,0 +1,120 @@
+أنت Replit Agent. عندي مشروع Full‑Stack:
+
+Frontend: React 18 + TypeScript + Vite (SPA).
+
+Backend: Node.js + Express.js.
+
+DB: PostgreSQL + Drizzle ORM.
+
+Auth: Firebase Authentication (الواجهة) + Firebase Admin للتحقق داخل الـ API.
+الهدف: تجهيز المشروع للنشر على Vercel بحيث:
+
+الـ Frontend يتبني إلى dist/ ويُخدَم كـ Static على /.
+
+الـ Backend يتحول إلى Vercel Functions داخل مجلد api/ ويُخدَم على /api/*.
+نفّذ التالي بدقة:
+
+1) فحص المشروع الحالي
+اعرض هيكل المجلدات في جذر المشروع وحدد مكان ملفات: package.json, vite.config.*, src/, وأي مجلد backend مثل server/ أو backend/.
+
+اعرض سكربتات scripts داخل package.json الحالي وحدد أمر البناء الذي ينتج dist/.
+
+2) تجهيز Frontend (Vite)
+تأكد أن npm run build ينتج مجلد dist/ في الجذر (أو حدّد المسار الصحيح إذا كان مختلف).
+
+لو في React Router (SPA)، لا تغيّر كود الراوتر، فقط جهّز Rewrite على Vercel في vercel.json (في خطوة لاحقة).
+
+تأكد أن base في Vite مناسب للنشر على الدومين (عادة base: '/').
+
+3) تحويل Express إلى Vercel Function
+مهم: ممنوع تشغيل app.listen(...) على Vercel Functions. بدلاً من ذلك:
+
+أنشئ/انقل كود إنشاء express() إلى ملف داخل api/ مثل api/index.ts.
+
+اجعل الملف يصدّر الـ handler/function بالصيغة المتوافقة مع Vercel Functions (Node runtime) داخل /api.
+​
+
+انقل ملفات المساعدة (db, firebase admin, middleware) إلى api/lib/* أو مسار مشابه، وتأكد أنها لا تُنشأ كـ routes لوحدها.
+
+ملاحظة: أي ملف داخل api/ قد يعتبر Function endpoint؛ حافظ على الملفات التنفيذية كـ routes، وباقي الأكواد داخل مجلدات فرعية مساعدة.
+​
+
+4) Drizzle + PostgreSQL
+اجعل اتصال PostgreSQL يعتمد على process.env.DATABASE_URL.
+
+أضف ملف api/lib/db.ts ينشئ Drizzle client مرة واحدة (مع مراعاة serverless).
+
+إن كانت هناك migrations/Drizzle Kit: جهّز أوامر drizzle-kit محلياً فقط (ليست شرطًا وقت تشغيل الـ API).
+
+5) Firebase Auth (Backend verification)
+أضف api/lib/firebaseAdmin.ts يقرأ متغيرات البيئة اللازمة (يفضل JSON/service account عبر env vars).
+
+أضف middleware مثل requireAuth:
+
+يقرأ Authorization: Bearer <idToken>
+
+يتحقق من الـ token باستخدام Firebase Admin
+
+يضع req.user أو ما يعادله
+
+طبّق middleware على endpoints الحساسة فقط.
+
+6) إنشاء vercel.json للـ SPA + API
+أنشئ vercel.json في جذر المشروع يحقق:
+
+عدم كسر مسارات /api/*
+
+تفعيل SPA fallback لكل المسارات الأخرى إلى /index.html
+​
+
+استخدم هذا المحتوى:
+
+json
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/:path*" },
+    { "source": "/((?!api/.*).*)", "destination": "/index.html" }
+  ]
+}
+7) اختبار محلي قبل الرفع
+شغّل build:
+
+npm install
+
+npm run build
+
+تأكد أن dist/index.html موجود.
+
+شغّل dev للـ API محليًا (لو عندنا سكربت dev) وتأكد endpoints تعمل.
+
+أضف endpoint اختبار سريع GET /api/health يرجع JSON.
+
+8) تجهيز النشر على Vercel (إرشادات داخل README)
+أضف README.md فيه إعدادات Vercel المتوقعة:
+
+Build Command: npm run build
+
+Output Directory: dist (لو Vite)
+​
+
+Environment Variables:
+
+DATABASE_URL
+
+متغيرات Firebase Admin اللازمة
+أضف خطوات ربط الدومين لاحقًا.
+
+9) المطلوب كـ مخرجات
+بعد التنفيذ، أعطني:
+
+شجرة المجلدات النهائية.
+
+محتوى vercel.json.
+
+مسارات الـ API المتاحة (/api/...) مع مثال request/response.
+
+أي تعديلات تمت في package.json وسببها.
+
+أي أخطاء متوقعة على Vercel وكيف نعالجها.
+
+ابدأ الآن بتنفيذ التعديلات في الكود، ولا تطلب مني معلومات إضافية إلا إذا كان هناك تعارض يمنع التنفيذ (مثل عدم وجود DATABASE_URL أو عدم وجود Firebase project).
