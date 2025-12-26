@@ -96,7 +96,7 @@ app.use("/api/auth", authLimiter);
 app.use("/api/users", authLimiter);
 app.use("/api/orders", orderLimiter);
 app.use("/api/contact", contactLimiter);
-app.use("/internal", internalLimiter);
+app.use("/api/internal", internalLimiter);
 
 // Verify Super Admin Secret
 const verifySuperAdminSecret = (req: Request, res: Response, next: NextFunction) => {
@@ -117,7 +117,7 @@ const verifySuperAdminSecret = (req: Request, res: Response, next: NextFunction)
 };
 
 // Internal Routes
-app.post("/internal/make-super-admin", verifySuperAdminSecret, async (req, res) => {
+app.post("/api/internal/make-super-admin", verifySuperAdminSecret, async (req, res) => {
   const { email } = req.body;
   if (!email) {
     return res.status(400).json({ error: "email is required" });
@@ -135,7 +135,7 @@ app.post("/internal/make-super-admin", verifySuperAdminSecret, async (req, res) 
   }
 });
 
-app.post("/internal/set-admin", verifySuperAdminSecret, async (req, res) => {
+app.post("/api/internal/set-admin", verifySuperAdminSecret, async (req, res) => {
   const { email, isAdmin } = req.body;
   if (!email) {
     return res.status(400).json({ error: "email is required" });
@@ -153,7 +153,7 @@ app.post("/internal/set-admin", verifySuperAdminSecret, async (req, res) => {
   }
 });
 
-app.post("/internal/set-delegate", verifySuperAdminSecret, async (req, res) => {
+app.post("/api/internal/set-delegate", verifySuperAdminSecret, async (req, res) => {
   const { email, isDelegate } = req.body;
   if (!email) {
     return res.status(400).json({ error: "email is required" });

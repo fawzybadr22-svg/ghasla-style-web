@@ -1,0 +1,114 @@
+أنت Replit Agent. المطلوب: تجهيز مشروع Full‑Stack (React+Vite في /client + Express API في /api + Postgres/Drizzle + Firebase Admin) للنشر على Vercel بالشكل الصحيح:
+- Frontend: Vite build يخرج إلى dist/public (موجود بالفعل في vite.config.ts).
+- Backend: Express يعمل كـ Vercel Function واحدة تستقبل كل /api/* (Catch‑all).
+- SPA routing: أي مسار غير /api/* يرجع index.html.
+نفّذ التعديلات التالية بدقة، ثم نفّذ اختبارات محلية، ثم أعطني ملفات النسخة النهائية (محتويات الملفات المعدلة).
+
+========================
+A) إصلاح Routing الخاص بالـ API على Vercel (الأهم)
+========================
+المشكلة الحالية: vercel.json يعمل rewrites إلى /api/index.ts مما قد يضيّع المسار الحقيقي، ويكسر routes مثل /api/health.
+الحل الصحيح: استخدم ملف Catch‑all داخل api/ ليجعل نفس Express app يستقبل كل /api/*.
+
+1) أنشئ ملف جديد: api/[...path].ts
+محتواه:
+------------------------------------------------
+import app from "./index";
+export default app;
+------------------------------------------------
+(لو قررت إعادة تسمية index.ts إلى app.ts، عدّل الاستيراد accordingly.)
+
+2) تأكد أن أي ملفات مساعدة ليست endpoints:
+- ضعها داخل api/lib/* (موجود بالفعل) ولا تضع ملفات مساعدة مباشرة في api/ بجانب endpoints إلا عند الحاجة.
+
+========================
+B) توحيد مسارات internal لتكون /api/internal/*
+========================
+في api/index.ts:
+1) غيّر الـ limiter:
+- app.use("/internal", internalLimiter);
+إلى:
+- app.use("/api/internal", internalLimiter);
+
+2) غيّر كل internal routes لتبدأ بـ /api/internal بدل /internal:
+- POST "/internal/make-super-admin" -> "/api/internal/make-super-admin"
+- POST "/internal/set-admin" -> "/api/internal/set-admin"
+- POST "/internal/set-delegate" -> "/api/internal/set-delegate"
+
+ملاحظة: لا تغيّر باقي routes (/api/...) لأنها متوافقة مع هدفنا (ستُستقبل عبر Catch‑all على /api/*).
+
+========================
+C) تبسيط vercel.json (بدون rewrites للـ API)
+========================
+استبدل vercel.json بالكامل بهذا المحتوى:
+
+{
+  "version": 2,
+  "framework": "vite",
+  "buildCommand": "npm run build:vercel",
+  "outputDirectory": "dist/public",
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
+}
+
+- لا تضع rewrites لـ /api ولا /internal (الـ Catch‑all سيتكفّل بـ /api/*).
+- لا تضف functions runtime mapping إلا إذا ظهر سبب حقيقي؛ الافتراضي كفاية.
+
+========================
+D) تحديث package.json (الجذر) ليتوافق مع Vercel
+========================
+في package.json الرئيسي (الجذر):
+1) أضف هذا السكربت:
+"build:vercel": "vite build"
+
+2) (مهم لتفادي مشاكل import.meta.dirname في بيئات قديمة):
+أضف engines node لضمان Node >= 20.11 (أو أعلى) لأن import.meta.dirname مدعوم من هذا الإصدار فأعلى:
+"engines": { "node": ">=20.11.0" }
+
+ملاحظة: لا تغيّر سكربت build الحالي (tsx script/build.ts)؛ اتركه كما هو لاستخدامات أخرى، لكن Vercel سيستخدم build:vercel فقط.
+
+========================
+E) تحديث توثيق النشر (اختياري لكن مُفيد)
+========================
+حدّث/أنشئ ملف VERCEL_DEPLOYMENT.md يتضمن:
+- Build Command: npm run build:vercel
+- Output Directory: dist/public
+- أهم Environment Variables:
+  DATABASE_URL
+  SUPER_ADMIN_SECRET
+  ALLOWED_ORIGINS (قيم مثل: https://yourdomain.com,https://www.yourdomain.com)
+  وأي متغيرات Firebase Admin المطلوبة (بدون أسرار داخل الكود)
+- أمثلة اختبار بعد النشر:
+  GET https://YOUR_DOMAIN.vercel.app/api/health
+  POST https://YOUR_DOMAIN.vercel.app/api/internal/make-super-admin
+    Header: X-Super-Admin-Secret: <SECRET>
+    Body: { "email": "..." }
+
+========================
+F) اختبارات قبل التسليم (لازم)
+========================
+نفّذ في الجذر:
+1) npm install
+2) npm run build:vercel
+تأكد أن dist/public/index.html موجود.
+
+اختبر routes محليًا قدر الإمكان:
+- إذا يوجد dev server للـ API، شغله وتأكد أن:
+  GET /api/health يرجع status ok
+  وأن internal routes موجودة تحت /api/internal/*
+
+========================
+G) مخرجات مطلوبة منك
+========================
+بعد التنفيذ، اعطني:
+1) محتوى الملفات النهائية:
+- vercel.json
+- api/index.ts (الجزء العلوي + تعريف internal routes + export default)
+- api/[...path].ts
+- package.json (scripts + engines)
+2) شجرة المجلدات المختصرة (root + api + client + dist بعد build).
+3) تأكيد: لا يوجد app.listen() في أي ملف داخل api/.
+4) أي أخطاء ظهرت أثناء build وكيف تم حلها.
+
+ابدأ التنفيذ الآن.
