@@ -1,0 +1,48 @@
+أنت وكيل تقني داخل Replit. المطلوب: تعمل تحليل شامل للمشروع الحالي لتحديد:
+1) نوع المشروع بدقة: Static SPA / SSR / Full-stack (Frontend+Backend) / API فقط / Script.
+2) كل التقنيات المستخدمة: لغات، Frameworks، Build tools، مكتبات أساسية، خدمات خارجية (Firebase/APIs/DB).
+3) أوامر التشغيل والبناء الصحيحة، وتحديد مجلد الإخراج للـ build (مثلاً dist/out/build) والبورت المستخدم.
+4) المتطلبات الخاصة بالنشر: rewrites (لـ SPA)، headers/CORS، env vars المطلوبة، secrets، domain/subfolder base path.
+5) توصية استضافة “مناسبة” مع تبرير واضح وخيارات بديلة.
+
+خطوات العمل المطلوبة منك:
+A) افحص ملفات الجذر: package.json / pnpm-lock.yaml أو package-lock.json / yarn.lock / requirements.txt / pyproject.toml / Pipfile
+B) افحص إعدادات Replit: ملف .replit و replit.nix (إن وجدا) وحدد run/build و deployment config (إن وجدت).
+C) افحص بنية المشروع: مجلدات مثل src/، public/، dist/، server/، api/، functions/، backend/، firebase.json، vercel.json، netlify.toml، dockerfile.
+D) استخرج أهم dependencies/devDependencies من package.json وصنّفها:
+   - Frontend (React/Vue/Angular, Router, State mgmt, UI)
+   - Backend (Express/Fastify/Nest, auth, validation)
+   - Database/ORM (Prisma/Drizzle/Mongoose/Sequelize)
+   - Firebase (Auth/Firestore/Storage/Functions/Hosting)
+   - Testing/Build (Vite/Webpack, TypeScript, ESLint)
+E) اكتشف هل في Backend فعلي:
+   - هل يوجد entry مثل server.js/app.js/index.js أو src/server؟
+   - هل يوجد Express/Fastify/Nest؟
+   - هل يوجد calls لـ process.env.PORT و listen؟
+F) اكتشف هل المشروع SPA يحتاج rewrite إلى index.html عند الاستضافة (React Router).
+G) جهّز تقرير نهائي “مختصر لكن كامل” بالصيغة التالية:
+
+== تقرير المشروع ==
+- Project type: ...
+- Frontend: ...
+- Backend: ...
+- Database: ...
+- External services: (Firebase/Stripe/…)
+- Build tool: ...
+- Output directory: ...
+- Run command (local): ...
+- Build command: ...
+- Env vars required: (list with descriptions, no secrets)
+- Ports: ...
+- Notes about routing/rewrites: ...
+
+== توصية الاستضافة ==
+1) Recommended hosting (why): ...
+2) Alternatives (pros/cons): ...
+3) Minimal deployment steps (per option): ...
+
+قيود مهمة:
+- لا تفترض أي شيء؛ لو معلومة غير مؤكدة اكتب “غير واضح” واقترح كيف نتأكد.
+- لا تطبع أسرار أو قيم env vars، فقط أسماء المتغيرات ومعناها.
+- لو فيه أكثر من خدمة (Frontend + Backend)، اقترح فصل النشر أو Monorepo strategy.
+ابدأ الآن.
