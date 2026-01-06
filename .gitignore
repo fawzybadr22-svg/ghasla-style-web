@@ -1,6 +1,21 @@
-node_modules
-dist
+# Node / build
+node_modules/
+dist/
+build/
+.vercel/
+
+# Env files (لا ترفعها على GitHub)
+*.env
+client/.env
+server/.env
+
+# Replit / local state
+.local/
+.config/replit/
+**/.agent_state*
+repl_state.bin
+filesystem_state.json
+latest.json
+
+# OS junk
 .DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz
